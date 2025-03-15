@@ -14,16 +14,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class UserController {
 
+    private final UserService userService;
+
     @Autowired
-    private UserService userService;
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     @PostMapping("/users")
-    public ResponseEntity<UserResponseDto> criarUsuario(@Valid @RequestBody UserRequestDto userRequestDto) {
-        try {
-            UserResponseDto userResponseDTO = userService.criarUsuario(userRequestDto);
-            return new ResponseEntity<>(userResponseDTO, HttpStatus.CREATED);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        }
+    public ResponseEntity<UserResponseDto> userCreate(@Valid @RequestBody UserRequestDto userRequestDto) {
+        UserResponseDto userResponseDTO = userService.userCreate(userRequestDto);
+        return new ResponseEntity<>(userResponseDTO, HttpStatus.CREATED);
     }
 }
