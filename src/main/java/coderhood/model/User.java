@@ -1,6 +1,8 @@
 package coderhood.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import java.util.UUID;
 
@@ -17,12 +19,16 @@ public class User {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
+    @NotBlank
     @Column(name = "nome")
     private String nome;
 
+    @NotBlank
+    @Email
     @Column(name = "email")
     private String email;
 
+    @NotBlank
     @Column(name = "senha")
     private String senha;
 
