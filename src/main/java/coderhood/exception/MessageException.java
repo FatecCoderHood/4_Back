@@ -1,4 +1,4 @@
-package coderhood.exception;g
+package coderhood.exception;
 import lombok.Getter;
 
 @Getter
