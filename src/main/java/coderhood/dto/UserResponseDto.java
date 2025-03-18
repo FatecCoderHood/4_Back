@@ -2,10 +2,11 @@ package coderhood.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.util.UUID;
 
-@AllArgsConstructor
+@NoArgsConstructor
 @Getter
 @Setter
 public class UserResponseDto {
@@ -14,5 +15,12 @@ public class UserResponseDto {
     private String nome;
     private String email;
     private String tipoAcesso;
+
+    public UserResponseDto(UUID id, String nome, String email, String tipoAcesso) {
+        this.id = id;
+        this.nome = nome;
+        this.email = email;
+        this.tipoAcesso = tipoAcesso;
+    }
 
 }
