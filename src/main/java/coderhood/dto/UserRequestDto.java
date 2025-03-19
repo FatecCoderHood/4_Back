@@ -22,7 +22,7 @@ public class UserRequestDto {
 
     @NotNull
     private String tipoAcesso;
-
+  
     public @NotBlank String getNome() {
         return nome;
     }

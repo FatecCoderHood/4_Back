@@ -16,6 +16,7 @@ import java.util.UUID;
 public class User {
 
     @Getter
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
@@ -77,4 +78,9 @@ public class User {
     public void setTipoAcesso(TipoAcesso tipoAcesso) {
         this.tipoAcesso = tipoAcesso;
     }
+
+    @Enumerated(EnumType.STRING)
+    private TipoAcesso tipoAcesso;
+
+
 }
