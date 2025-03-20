@@ -15,7 +15,6 @@ import java.util.UUID;
 @EqualsAndHashCode(of = "id")
 public class User {
 
-    @Getter
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
@@ -33,48 +32,7 @@ public class User {
     @Column(name = "senha")
     private String senha;
 
-    @Setter
-    @Getter
     @Enumerated(EnumType.STRING)
     private TipoAcesso tipoAcesso;
 
-    public @NotBlank @Email String getEmail() {
-        return email;
-    }
-
-    public void setEmail(@NotBlank @Email String email) {
-        this.email = email;
-    }
-
-    public @NotBlank String getNome() {
-        return nome;
-    }
-
-    public void setNome(@NotBlank String nome) {
-        this.nome = nome;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public @NotBlank String getSenha() {
-        return senha;
-    }
-
-    public void setSenha(@NotBlank String senha) {
-        this.senha = senha;
-    }
-
-    public TipoAcesso getTipoAcesso() {
-        return tipoAcesso;
-    }
-
-    public void setTipoAcesso(TipoAcesso tipoAcesso) {
-        this.tipoAcesso = tipoAcesso;
-    }
 }
