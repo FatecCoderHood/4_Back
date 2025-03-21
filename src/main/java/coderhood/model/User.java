@@ -35,4 +35,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     private TipoAcesso tipoAcesso;
 
+    @Column(nullable = false)
+    private boolean ativo = true;
+
 }

@@ -11,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
+import java.util.UUID;
 
 
 @Service
@@ -23,6 +24,7 @@ public class UserService {
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
+
 
     @Transactional
     public UserResponseDto userCreate(UserRequestDto userRequestDto) {
@@ -44,5 +46,14 @@ public class UserService {
         user = userRepository.save(user);
 
         return new UserResponseDto(user.getId(), user.getNome(), user.getEmail(), user.getTipoAcesso().name());
+    }
+
+    @Transactional
+    public void deleteUser(UUID id) {
+        User user = userRepository.findByIdAndAtivoTrue(id)
+                .orElseThrow(() -> new MessageException("Usuário não encontrado ou já desativado"));
+
+        user.setAtivo(false);
+        userRepository.save(user);
     }
 }
