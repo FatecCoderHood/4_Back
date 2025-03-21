@@ -11,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class UserService {
@@ -43,5 +44,32 @@ public class UserService {
         user = userRepository.save(user);
 
         return new UserResponseDto(user.getId(), user.getNome(), user.getEmail(), user.getTipoAcesso().name());
+    }
+
+    @Transactional
+    public String userUpdate(UUID id, UserRequestDto userRequestDto) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new MessageException("Usuário não encontrado."));
+
+        // Atualiza apenas os campos que não são nulos ou vazios
+        if (userRequestDto.getNome() != null && !userRequestDto.getNome().trim().isEmpty()) {
+            user.setNome(userRequestDto.getNome());
+        }
+
+        if (userRequestDto.getEmail() != null && !userRequestDto.getEmail().trim().isEmpty()) {
+            user.setEmail(userRequestDto.getEmail());
+        }
+
+        if (userRequestDto.getSenha() != null && !userRequestDto.getSenha().trim().isEmpty()) {
+            user.setSenha(passwordEncoder.encode(userRequestDto.getSenha()));
+        }
+
+        if (userRequestDto.getTipoAcesso() != null) {
+            user.setTipoAcesso(TipoAcesso.valueOf(userRequestDto.getTipoAcesso()));
+        }
+
+        userRepository.save(user);
+
+        return "Usuário atualizado com sucesso.";
     }
 }
