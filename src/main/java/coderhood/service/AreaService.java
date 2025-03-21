@@ -19,17 +19,17 @@ public class AreaService {
     @Autowired
     private AreaRepository areaRepository;
 
-    public Area createArea(@Valid AreaDto areaDTO) {
-        if (areaDTO.getTamanho() <= 0) {
+    public Area createArea(@Valid AreaDto areaDtO) {
+        if (areaDtO.getTamanho() <= 0) {
             throw new MessageException("O tamanho da área deve ser maior que zero.");
         }
 
         Area area = new Area();
-        area.setNome(areaDTO.getNome());
-        area.setLocalizacao(areaDTO.getLocalizacao());
-        area.setTamanho(areaDTO.getTamanho());
-        area.setCultura(areaDTO.getCultura());
-        area.setProdutividade(areaDTO.getProdutividade());
+        area.setNome( areaDtO.getNome());
+        area.setLocalizacao( areaDtO.getLocalizacao());
+        area.setTamanho( areaDtO.getTamanho());
+        area.setCultura( areaDtO.getCultura());
+        area.setProdutividade( areaDtO.getProdutividade());
 
         return areaRepository.save(area);
     }
