@@ -1,12 +1,10 @@
 package coderhood.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import java.util.UUID;
@@ -14,6 +12,8 @@ import java.util.UUID;
 @Setter
 @Getter
 @Entity
+@Table(name = "tb_area")
+@EqualsAndHashCode(of = "id")
 public class Area {
 
     @Id
