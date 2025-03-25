@@ -3,11 +3,15 @@ package coderhood.controller;
 import coderhood.dto.AreaRequestDto;
 import coderhood.dto.AreaResponseDto;
 import coderhood.service.AreaService;
+import coderhood.service.GeoJsonService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,6 +21,9 @@ public class AreaController {
 
     @Autowired
     private AreaService areaService;
+
+    @Autowired
+    private GeoJsonService geoJsonService;
 
     @PostMapping
     public ResponseEntity<AreaResponseDto> createArea(@Valid @RequestBody AreaRequestDto areaRequestDto) {
@@ -47,5 +54,20 @@ public class AreaController {
     public ResponseEntity<Void> deleteArea(@PathVariable UUID id) {
         areaService.deleteArea(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/upload")
+    public ResponseEntity<List<String>> importGeoJsonFile(@RequestParam("file") MultipartFile file) {
+        try {
+            List<String> response = geoJsonService.importGeoJsonFile(file);
+
+            if (response.contains("Arquivo importado com sucesso.")) {
+                return new ResponseEntity<>(response, HttpStatus.CREATED);
+            } else {
+                return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            }
+        } catch (IOException e) {
+            return new ResponseEntity<>(List.of("Erro ao processar o arquivo: " + e.getMessage()), HttpStatus.BAD_REQUEST);
+        }
     }
 }
