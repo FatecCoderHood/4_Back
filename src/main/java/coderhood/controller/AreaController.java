@@ -1,7 +1,7 @@
 package coderhood.controller;
 
-import coderhood.dto.AreaDto;
-import coderhood.model.Area;
+import coderhood.dto.AreaRequestDto;
+import coderhood.dto.AreaResponseDto;
 import coderhood.service.AreaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,27 +19,28 @@ public class AreaController {
     private AreaService areaService;
 
     @PostMapping
-    public ResponseEntity<Area> createArea(@Valid @RequestBody AreaDto areaDTO) {
-        Area area = areaService.createArea(areaDTO);
-        return new ResponseEntity<>(area, HttpStatus.CREATED);
+    public ResponseEntity<AreaResponseDto> createArea(@Valid @RequestBody AreaRequestDto areaRequestDto) {
+        AreaResponseDto areaResponseDto = areaService.createArea(areaRequestDto);
+        return new ResponseEntity<>(areaResponseDto, HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Optional<Area>> getAreaById(@PathVariable UUID id) {
-        Optional<Area> area = areaService.findAreaById(id);
-        return ResponseEntity.ok(area);
+    public ResponseEntity<AreaResponseDto> getAreaById(@PathVariable UUID id) {
+        Optional<AreaResponseDto> areaResponseDto = areaService.findAreaById(id);
+        return areaResponseDto.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping
-    public ResponseEntity<Iterable<Area>> getAllAreas() {
-        Iterable<Area> areas = areaService.findAllAreas();
-        return ResponseEntity.ok(areas);
+    public ResponseEntity<Iterable<AreaResponseDto>> getAllAreas() {
+        Iterable<AreaResponseDto> areasResponseDto = areaService.findAllAreas();
+        return ResponseEntity.ok(areasResponseDto);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Area> updateArea(@PathVariable UUID id, @Valid @RequestBody AreaDto areaDto) {
-        Area updatedArea = areaService.updateArea(id, areaDto);
-        return ResponseEntity.ok(updatedArea);
+    public ResponseEntity<AreaResponseDto> updateArea(@PathVariable UUID id, @Valid @RequestBody AreaRequestDto areaRequestDto) {
+        AreaResponseDto updatedAreaResponseDto = areaService.updateArea(id, areaRequestDto);
+        return ResponseEntity.ok(updatedAreaResponseDto);
     }
 
     @DeleteMapping("/{id}")

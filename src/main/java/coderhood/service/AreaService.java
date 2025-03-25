@@ -1,58 +1,72 @@
 package coderhood.service;
 
-import coderhood.dto.AreaDto;
+import coderhood.dto.AreaRequestDto;
+import coderhood.dto.AreaResponseDto;
 import coderhood.exception.MessageException;
 import coderhood.model.Area;
 import coderhood.repository.AreaRepository;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
-
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-@Service
 @Validated
+@Service
 public class AreaService {
 
     @Autowired
     private AreaRepository areaRepository;
 
-    public Area createArea(@Valid AreaDto areaDtO) {
-        if (areaDtO.getTamanho() <= 0) {
+    public AreaResponseDto createArea(AreaRequestDto areaRequestDto) {
+        if (areaRequestDto.getTamanho() <= 0) {
             throw new MessageException("O tamanho da área deve ser maior que zero.");
         }
 
         Area area = new Area();
-        area.setNome( areaDtO.getNome());
-        area.setLocalizacao( areaDtO.getLocalizacao());
-        area.setTamanho( areaDtO.getTamanho());
-        area.setCultura( areaDtO.getCultura());
-        area.setProdutividade( areaDtO.getProdutividade());
+        area.setNome(areaRequestDto.getNome());
+        area.setLocalizacao(areaRequestDto.getLocalizacao());
+        area.setTamanho(areaRequestDto.getTamanho());
+        area.setCultura(areaRequestDto.getCultura());
+        area.setProdutividade(areaRequestDto.getProdutividade());
 
-        return areaRepository.save(area);
+        Area savedArea = areaRepository.save(area);
+
+        return AreaResponseDto.fromEntity(savedArea);
     }
 
-    public Optional<Area> findAreaById(UUID id) {
-        return areaRepository.findById(id);
+    public Optional<AreaResponseDto> findAreaById(UUID id) {
+        Optional<Area> area = areaRepository.findById(id);
+        if (area.isEmpty()) {
+            return Optional.empty();
+        }
 
+        AreaResponseDto areaResponseDto = AreaResponseDto.fromEntity(area.get());
+        return Optional.of(areaResponseDto);
     }
 
-    public Iterable<Area> findAllAreas() {
-        return areaRepository.findAll();
+    public Iterable<AreaResponseDto> findAllAreas() {
+        Iterable<Area> areas = areaRepository.findAll();
+        return ((List<Area>) areas).stream()
+                .map(AreaResponseDto::fromEntity)
+                .collect(Collectors.toList());
     }
 
-    public Area updateArea(UUID id, @Valid AreaDto areaDto) {
+    public AreaResponseDto updateArea(UUID id, AreaRequestDto areaRequestDto) {
         Area area = areaRepository.findById(id)
                 .orElseThrow(() -> new MessageException("Área com ID " + id + " não encontrada."));
-        area.setNome(areaDto.getNome());
-        area.setLocalizacao(areaDto.getLocalizacao());
-        area.setTamanho(areaDto.getTamanho());
-        area.setCultura(areaDto.getCultura());
-        area.setProdutividade(areaDto.getProdutividade());
 
-        return areaRepository.save(area);
+        area.setNome(areaRequestDto.getNome());
+        area.setLocalizacao(areaRequestDto.getLocalizacao());
+        area.setTamanho(areaRequestDto.getTamanho());
+        area.setCultura(areaRequestDto.getCultura());
+        area.setProdutividade(areaRequestDto.getProdutividade());
+
+        Area updatedArea = areaRepository.save(area);
+
+        return AreaResponseDto.fromEntity(updatedArea);
     }
 
     public void deleteArea(UUID id) {
