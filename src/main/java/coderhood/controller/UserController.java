@@ -4,12 +4,18 @@ import coderhood.dto.UserRequestDto;
 import coderhood.dto.UserResponseDto;
 import coderhood.service.UserService;
 import jakarta.validation.Valid;
+
+import java.util.UUID;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
-import java.util.UUID;
 
 @RestController
 public class UserController {
@@ -27,8 +33,8 @@ public class UserController {
         return new ResponseEntity<>(userResponseDTO, HttpStatus.CREATED);
     }
 
-    @DeleteMapping("/users/{id}")
-    public void deleteUser(@PathVariable UUID id) {
-        userService.deleteUser(id);
+    @PutMapping("user/{id}")
+    public String userUpdate(@PathVariable UUID id, @RequestBody UserRequestDto userRequestDto) {
+        return userService.userUpdate(id, userRequestDto);
     }
 }

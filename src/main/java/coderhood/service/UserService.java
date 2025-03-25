@@ -25,7 +25,6 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-
     @Transactional
     public UserResponseDto userCreate(UserRequestDto userRequestDto) {
         if (!EmailValidator.isValidEmail(userRequestDto.getEmail())) {
@@ -49,11 +48,29 @@ public class UserService {
     }
 
     @Transactional
-    public void deleteUser(UUID id) {
-        User user = userRepository.findByIdAndAtivoTrue(id)
-                .orElseThrow(() -> new MessageException("Usuário não encontrado ou já desativado"));
+    public String userUpdate(UUID id, UserRequestDto userRequestDto) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new MessageException("Usuário não encontrado."));
 
-        user.setAtivo(false);
+        // Atualiza apenas os campos que não são nulos ou vazios
+        if (userRequestDto.getNome() != null && !userRequestDto.getNome().trim().isEmpty()) {
+            user.setNome(userRequestDto.getNome());
+        }
+
+        if (userRequestDto.getEmail() != null && !userRequestDto.getEmail().trim().isEmpty()) {
+            user.setEmail(userRequestDto.getEmail());
+        }
+
+        if (userRequestDto.getSenha() != null && !userRequestDto.getSenha().trim().isEmpty()) {
+            user.setSenha(passwordEncoder.encode(userRequestDto.getSenha()));
+        }
+
+        if (userRequestDto.getTipoAcesso() != null) {
+            user.setTipoAcesso(TipoAcesso.valueOf(userRequestDto.getTipoAcesso()));
+        }
+
         userRepository.save(user);
+
+        return "Usuário atualizado com sucesso.";
     }
 }
