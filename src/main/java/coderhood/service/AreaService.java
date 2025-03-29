@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
-
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,14 +19,15 @@ public class AreaService {
     private AreaRepository areaRepository;
 
     public Area createArea(@Valid AreaDto areaDTO) {
-        if (areaDTO.getTamanho() <= 0) {
-            throw new MessageException("O tamanho da área deve ser maior que zero.");
+        // Validação do GeoJSON
+        if (areaDTO.getGeojson() == null || areaDTO.getGeojson().isEmpty()) {
+            throw new MessageException("O conteúdo do GeoJSON é obrigatório.");
         }
 
         Area area = new Area();
         area.setNome(areaDTO.getNome());
         area.setLocalizacao(areaDTO.getLocalizacao());
-        area.setTamanho(areaDTO.getTamanho());
+        area.setGeojson(areaDTO.getGeojson()); 
         area.setCultura(areaDTO.getCultura());
         area.setProdutividade(areaDTO.getProdutividade());
 
@@ -36,7 +36,6 @@ public class AreaService {
 
     public Optional<Area> findAreaById(UUID id) {
         return areaRepository.findById(id);
-
     }
 
     public Iterable<Area> findAllAreas() {
@@ -45,10 +44,14 @@ public class AreaService {
 
     public Area updateArea(UUID id, @Valid AreaDto areaDto) {
         Area area = areaRepository.findById(id)
-                .orElseThrow(() -> new MessageException("Área com ID " + id + " não encontrada."));
+                .orElseThrow(() -> new MessageException("Área não encontrada: " + id));
+        
+        if (areaDto.getGeojson() != null && !areaDto.getGeojson().isEmpty()) {
+            area.setGeojson(areaDto.getGeojson());
+        }
+        
         area.setNome(areaDto.getNome());
         area.setLocalizacao(areaDto.getLocalizacao());
-        area.setTamanho(areaDto.getTamanho());
         area.setCultura(areaDto.getCultura());
         area.setProdutividade(areaDto.getProdutividade());
 
@@ -57,8 +60,8 @@ public class AreaService {
 
     public void deleteArea(UUID id) {
         if (!areaRepository.existsById(id)) {
-            throw new MessageException("Área com ID " + id + " não encontrada.");
+            throw new RuntimeException("Área não encontrada com ID: " + id);
         }
-        areaRepository.deleteById(id);
+        areaRepository.deleteById(id); 
     }
 }
