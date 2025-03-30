@@ -10,6 +10,8 @@ import coderhood.validator.EmailValidator;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -73,4 +75,24 @@ public class UserService {
 
         return "Usuário atualizado com sucesso.";
     }
+
+    @Transactional
+    public String userDelete(UUID id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new MessageException("Usuário não encontrado."));
+
+        user.setAtivo(false);
+
+        userRepository.save(user);
+        return "Usuário excluído logicamente com sucesso.";
+    }
+
+    public Optional<User> findByIdAndAtivoTrue(UUID id) {
+        return userRepository.findByIdAndAtivoTrue(id);
+    }
+
+    public List<User> findAllActiveUsers() {
+        return userRepository.findByAtivoTrue();
+    }
+
 }

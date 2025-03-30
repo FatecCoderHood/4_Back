@@ -16,13 +16,9 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.*;
 
-
+@RequestMapping("/users")
 @RestController
 public class UserController {
 
@@ -40,7 +36,7 @@ public class UserController {
                      schema = @Schema(implementation = Area.class))),
         @ApiResponse(responseCode = "400", description = "Entrada inválida", content = @Content)
     })
-    @PostMapping("/users")
+    @PostMapping
     public ResponseEntity<UserResponseDto> userCreate(@Valid @RequestBody UserRequestDto userRequestDto) {
         UserResponseDto userResponseDTO = userService.userCreate(userRequestDto);
         return new ResponseEntity<>(userResponseDTO, HttpStatus.CREATED);
@@ -52,8 +48,20 @@ public class UserController {
                      content = @Content(mediaType = "application/json", 
                      schema = @Schema(implementation = Area.class)))
     })
-    @PutMapping("user/{id}")
+    @PutMapping("/{id}")
     public String userUpdate(@PathVariable UUID id, @RequestBody UserRequestDto userRequestDto) {
         return userService.userUpdate(id, userRequestDto);
     }
+
+    @Operation(summary = "Excluir usuário logicamente")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Usuário excluído com sucesso"),
+            @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    })
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> userDelete(@PathVariable UUID id) {
+        String responseMessage = userService.userDelete(id);
+        return new ResponseEntity<>(responseMessage, HttpStatus.OK);
+    }
+
 }
