@@ -1,78 +1,67 @@
 package coderhood.service;
 
-import coderhood.dto.AreaRequestDto;
-import coderhood.dto.AreaResponseDto;
+import coderhood.dto.AreaDto;
 import coderhood.exception.MessageException;
 import coderhood.model.Area;
 import coderhood.repository.AreaRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-@Validated
 @Service
+@Validated
 public class AreaService {
 
     @Autowired
     private AreaRepository areaRepository;
 
-    public AreaResponseDto createArea(AreaRequestDto areaRequestDto) {
-        if (areaRequestDto.getTamanho() <= 0) {
-            throw new MessageException("O tamanho da área deve ser maior que zero.");
+    public Area createArea(@Valid AreaDto areaDTO) {
+        // Validação do GeoJSON
+        if (areaDTO.getGeojson() == null || areaDTO.getGeojson().isEmpty()) {
+            throw new MessageException("O conteúdo do GeoJSON é obrigatório.");
         }
 
         Area area = new Area();
-        area.setNome(areaRequestDto.getNome());
-        area.setLocalizacao(areaRequestDto.getLocalizacao());
-        area.setTamanho(areaRequestDto.getTamanho());
-        area.setCultura(areaRequestDto.getCultura());
-        area.setProdutividade(areaRequestDto.getProdutividade());
+        area.setNome(areaDTO.getNome());
+        area.setLocalizacao(areaDTO.getLocalizacao());
+        area.setGeojson(areaDTO.getGeojson()); 
+        area.setCultura(areaDTO.getCultura());
+        area.setProdutividade(areaDTO.getProdutividade());
 
-        Area savedArea = areaRepository.save(area);
-
-        return AreaResponseDto.fromEntity(savedArea);
+        return areaRepository.save(area);
     }
 
-    public Optional<AreaResponseDto> findAreaById(UUID id) {
-        Optional<Area> area = areaRepository.findById(id);
-        if (area.isEmpty()) {
-            return Optional.empty();
-        }
-
-        AreaResponseDto areaResponseDto = AreaResponseDto.fromEntity(area.get());
-        return Optional.of(areaResponseDto);
+    public Optional<Area> findAreaById(UUID id) {
+        return areaRepository.findById(id);
     }
 
-    public Iterable<AreaResponseDto> findAllAreas() {
-        Iterable<Area> areas = areaRepository.findAll();
-        return ((List<Area>) areas).stream()
-                .map(AreaResponseDto::fromEntity)
-                .collect(Collectors.toList());
+    public Iterable<Area> findAllAreas() {
+        return areaRepository.findAll();
     }
 
-    public AreaResponseDto updateArea(UUID id, AreaRequestDto areaRequestDto) {
+    public Area updateArea(UUID id, @Valid AreaDto areaDto) {
         Area area = areaRepository.findById(id)
-                .orElseThrow(() -> new MessageException("Área com ID " + id + " não encontrada."));
+                .orElseThrow(() -> new MessageException("Área não encontrada: " + id));
+        
+        if (areaDto.getGeojson() != null && !areaDto.getGeojson().isEmpty()) {
+            area.setGeojson(areaDto.getGeojson());
+        }
+        
+        area.setNome(areaDto.getNome());
+        area.setLocalizacao(areaDto.getLocalizacao());
+        area.setCultura(areaDto.getCultura());
+        area.setProdutividade(areaDto.getProdutividade());
 
-        area.setNome(areaRequestDto.getNome());
-        area.setLocalizacao(areaRequestDto.getLocalizacao());
-        area.setTamanho(areaRequestDto.getTamanho());
-        area.setCultura(areaRequestDto.getCultura());
-        area.setProdutividade(areaRequestDto.getProdutividade());
-
-        Area updatedArea = areaRepository.save(area);
-
-        return AreaResponseDto.fromEntity(updatedArea);
+        return areaRepository.save(area);
     }
 
     public void deleteArea(UUID id) {
         if (!areaRepository.existsById(id)) {
-            throw new MessageException("Área com ID " + id + " não encontrada.");
+            throw new RuntimeException("Área não encontrada com ID: " + id);
         }
-        areaRepository.deleteById(id);
+        areaRepository.deleteById(id); 
     }
 }

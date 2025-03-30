@@ -2,7 +2,6 @@ package coderhood.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -20,21 +19,20 @@ public class Area {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @NotNull(message = "O nome é obrigatório")
-    @Size(min = 3, max = 255, message = "O nome deve ter entre 3 e 255 caracteres")
+    @NotNull
+    @Size(min = 3, max = 255)
     private String nome;
 
-    @Size(max = 255, message = "A localização pode ter no máximo 255 caracteres")
+    @Size(max = 255)
     private String localizacao;
 
-    @NotNull(message = "O tamanho é obrigatório")
-    @PositiveOrZero(message = "O tamanho deve ser um valor positivo ou zero")
-    private Double tamanho;
+    @NotNull
+    @Lob
+    @Column(name = "geojson")  
+    private String geojson;  
 
-    @Size(max = 255, message = "A cultura pode ter no máximo 255 caracteres")
+    @Size(max = 255)
     private String cultura;
 
-    @PositiveOrZero(message = "A produtividade deve ser um valor positivo ou zero")
     private Double produtividade;
-
 }
