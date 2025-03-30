@@ -1,9 +1,12 @@
 package coderhood.controller;
 
 import coderhood.dto.AreaDto;
+import coderhood.dto.GeoJsonDto;
 import coderhood.model.Area;
 import coderhood.service.AreaService;
 import coderhood.service.GeoJsonService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -16,7 +19,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import java.io.IOException;
+
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,6 +35,9 @@ public class AreaController {
 
     @Autowired
     private GeoJsonService geoJsonService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Operation(summary = "Criar área via JSON")
     @ApiResponses(value = {
@@ -108,7 +116,7 @@ public class AreaController {
             content = @Content(schema = @Schema(implementation = Area.class)))
     })
     @GetMapping
-    public ResponseEntity<Iterable<Area>> getAllAreas() {
+    public ResponseEntity<List<Area>> getAllAreas() {
         return ResponseEntity.ok(areaService.findAllAreas());
     }
 
@@ -118,14 +126,53 @@ public class AreaController {
             content = @Content(schema = @Schema(implementation = Area.class))),
         @ApiResponse(responseCode = "404", description = "Área não encontrada")
     })
-    
     @PutMapping("/{id}")
     public ResponseEntity<?> updateArea(@PathVariable UUID id, @Valid @RequestBody AreaDto areaDto) {
         try {
             Area updatedArea = areaService.updateArea(id, areaDto);
             return ResponseEntity.ok(updatedArea);
         } catch (Exception e) {
+            log.error("Erro ao atualizar área: ", e);
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    @Operation(summary = "Atualizar GeoJSON de uma área")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "GeoJSON atualizado com sucesso",
+            content = @Content(schema = @Schema(implementation = Area.class))),
+        @ApiResponse(responseCode = "400", description = "Dados inválidos"),
+        @ApiResponse(responseCode = "404", description = "Área não encontrada")
+    })
+    @PutMapping("/{id}/geojson")
+    public ResponseEntity<?> updateAreaGeoJson(
+            @PathVariable UUID id,
+            @RequestBody Map<String, Object> payload) {
+        
+        try {
+            if (!payload.containsKey("geojson")) {
+                return ResponseEntity.badRequest().body("Campo 'geojson' é obrigatório");
+            }
+
+            Object geojsonObj = payload.get("geojson");
+            String geojson;
+            
+            if (geojsonObj instanceof String) {
+                geojson = (String) geojsonObj;
+            } else {
+                geojson = objectMapper.writeValueAsString(geojsonObj);
+            }
+
+            Area updatedArea = areaService.updateAreaGeoJson(id, new GeoJsonDto(geojson));
+            return ResponseEntity.ok(updatedArea);
+            
+        } catch (JsonProcessingException e) {
+            return ResponseEntity.badRequest().body("GeoJSON inválido: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            log.error("Erro ao atualizar GeoJSON: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro interno ao processar GeoJSON");
         }
     }
 
@@ -136,12 +183,12 @@ public class AreaController {
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteArea(@PathVariable UUID id) {
-    try {
-        areaService.deleteArea(id); 
-        return ResponseEntity.noContent().build();
-    } catch (Exception e) {
-        return ResponseEntity.notFound().build();
+        try {
+            areaService.deleteArea(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Erro ao deletar área: ", e);
+            return ResponseEntity.notFound().build();
+        }
     }
-   }
 }
-
