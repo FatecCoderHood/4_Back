@@ -5,6 +5,9 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import java.util.UUID;
+import java.util.List;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @Table(name = "tb_user")
 @Getter
@@ -33,6 +36,18 @@ public class User {
     private String senha;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_acesso")
     private TipoAcesso tipoAcesso;
 
+    public enum TipoAcesso {
+        ADMIN,
+        CONSULTOR,
+        ANALISTA;
+
+        public static List<String> getValues() {
+            return Arrays.stream(values())
+                .map(Enum::name)
+                .collect(Collectors.toList());
+        }
+    }
 }
