@@ -6,6 +6,7 @@ import coderhood.exception.MessageException;
 import coderhood.model.Area;
 import coderhood.repository.AreaRepository;
 import jakarta.validation.Valid;
+import org.locationtech.jts.geom.Geometry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
@@ -25,9 +26,14 @@ public class AreaService {
     private GeoJsonService geoJsonService;
 
     public Area createArea(@Valid AreaDto areaDTO) {
+        // Valida o GeoJSON
         validateGeoJson(areaDTO.getGeojson());
         
-        Area area = convertToEntity(areaDTO);
+        // Converte o GeoJSON para Geometry
+        Geometry geometria = converterGeoJsonParaGeometry(areaDTO.getGeojson());
+        
+        // Cria a entidade Area
+        Area area = convertToEntity(areaDTO, geometria);
         return areaRepository.save(area);
     }
 
@@ -44,21 +50,33 @@ public class AreaService {
 
         if (areaDto.getGeojson() != null && !areaDto.getGeojson().isEmpty()) {
             validateGeoJson(areaDto.getGeojson());
-            existingArea.setGeojson(areaDto.getGeojson());
+            // Atualiza a geometria
+            Geometry geometria = converterGeoJsonParaGeometry(areaDto.getGeojson());
+            existingArea.setGeometria(geometria);
         }
 
         updateEntityFromDto(existingArea, areaDto);
         return areaRepository.save(existingArea);
     }
 
-    public Area updateAreaGeoJson(UUID id, @Valid GeoJsonDto geoJsonDto) {
+    public Area updateAreaGeoJson(UUID id, @Valid GeoJsonDto geoJsonDto, Geometry geometry) {
+        // Validação do GeoJSON
         validateGeoJson(geoJsonDto.getGeojson());
-        
-        Area area = getAreaOrThrow(id);
+    
+        // Carregar a área existente a partir do id
+        Area area = areaRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Área não encontrada"));
+    
+        // Atualizar o campo de geometria
+        area.setGeometria(geometry);  // Usa o método setGeometria
+    
+        // Atualiza a geojson no modelo, se necessário
         area.setGeojson(geoJsonDto.getGeojson());
+    
+        // Salvar a área atualizada na base de dados
         return areaRepository.save(area);
     }
-
+    
     public void deleteArea(UUID id) {
         if (!areaRepository.existsById(id)) {
             throw new MessageException("Área não encontrada com ID: " + id);
@@ -82,10 +100,19 @@ public class AreaService {
         }
     }
 
-    private Area convertToEntity(AreaDto dto) {
+    private Geometry converterGeoJsonParaGeometry(String geojson) {
+        try {
+            return geoJsonService.converterParaGeometry(geojson);
+        } catch (Exception e) {
+            throw new MessageException("Erro ao converter GeoJSON para geometria: " + e.getMessage());
+        }
+    }
+
+    private Area convertToEntity(AreaDto dto, Geometry geometria) {
         Area area = new Area();
         updateEntityFromDto(area, dto);
         area.setGeojson(dto.getGeojson());
+        area.setGeometria(geometria);
         return area;
     }
 

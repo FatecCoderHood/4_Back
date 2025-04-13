@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Size;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import org.locationtech.jts.geom.Geometry;
+
 import java.util.UUID;
 
 @Setter
@@ -28,11 +30,23 @@ public class Area {
 
     @NotNull
     @Lob
-    @Column(name = "geojson")  
-    private String geojson;  
+    @Column(name = "geojson")
+    private String geojson;
 
     @Size(max = 255)
     private String cultura;
 
     private Double produtividade;
+
+    @Column(columnDefinition = "geometry")
+    private Geometry geometria;
+
+    // Caso queira garantir que os métodos existam sem depender do Lombok:
+    public Geometry getGeometria() {
+        return geometria;
+    }
+
+    public void setGeometria(Geometry geometria) {
+        this.geometria = geometria;
+    }
 }

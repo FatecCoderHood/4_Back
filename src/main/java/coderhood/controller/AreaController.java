@@ -19,6 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.locationtech.jts.geom.Geometry;
+
 
 import java.util.List;
 import java.util.Map;
@@ -78,14 +80,20 @@ public class AreaController {
                 throw new IllegalArgumentException("Arquivo GeoJSON não pode ser vazio!");
             }
 
+            // Processar o conteúdo do GeoJSON
             String geojsonContent = geoJsonService.processGeoJson(geojsonFile);
 
+            // Converter o GeoJSON em Geometry
+            Geometry geometry = geoJsonService.converterParaGeometry(geojsonContent);
+
+            // Criar a área com a geometria
             AreaDto areaDTO = AreaDto.builder()
                 .nome(nome)
                 .localizacao(localizacao)
                 .cultura(cultura)
                 .produtividade(produtividade)
                 .geojson(geojsonContent)
+                .geometria(geometry)  // Adicionando a geometria ao DTO
                 .build();
 
             Area area = areaService.createArea(areaDTO);
@@ -163,7 +171,11 @@ public class AreaController {
                 geojson = objectMapper.writeValueAsString(geojsonObj);
             }
 
-            Area updatedArea = areaService.updateAreaGeoJson(id, new GeoJsonDto(geojson));
+            // Converter o GeoJSON para Geometry
+            Geometry geometry = geoJsonService.converterParaGeometry(geojson);
+
+            // Atualizar a área com a nova geometria
+            Area updatedArea = areaService.updateAreaGeoJson(id, new GeoJsonDto(geojson), geometry);
             return ResponseEntity.ok(updatedArea);
             
         } catch (JsonProcessingException e) {
