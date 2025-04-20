@@ -1,98 +1,95 @@
 package coderhood.service;
 
-import coderhood.dto.UserRequestDto;
-import coderhood.dto.UserResponseDto;
-import coderhood.exception.MessageException;
-import coderhood.model.TipoAcesso;
+import coderhood.dto.*;
+import coderhood.exception.ResourceNotFoundException;
+import coderhood.exception.BusinessRuleException;
 import coderhood.model.User;
+import coderhood.model.User.TipoAcesso;
 import coderhood.repository.UserRepository;
-import coderhood.validator.EmailValidator;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    @Transactional(readOnly = true)
+    public UserResponseDto getUserById(UUID id) {
+        return userRepository.findById(id)
+            .map(this::convertToDto)
+            .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
+    }
 
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    @Transactional(readOnly = true)
+    public List<UserResponseDto> getAllUsers() {
+        return userRepository.findAll().stream()
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
     }
 
     @Transactional
-    public UserResponseDto userCreate(UserRequestDto userRequestDto) {
-        if (!EmailValidator.isValidEmail(userRequestDto.getEmail())) {
-            throw new MessageException("E-mail inválido");
-        }
-
-        Optional<User> existingUser = userRepository.findByEmail(userRequestDto.getEmail());
-        if (existingUser.isPresent()) {
-            throw new MessageException("E-mail já cadastrado.");
+    public UserResponseDto createUser(UserCreateDto userCreateDto) {
+        if (userRepository.existsByEmail(userCreateDto.getEmail())) {
+            throw new BusinessRuleException("E-mail já cadastrado");
         }
 
         User user = new User();
-        user.setNome(userRequestDto.getNome());
-        user.setEmail(userRequestDto.getEmail());
-        user.setSenha(passwordEncoder.encode(userRequestDto.getSenha()));
-        user.setTipoAcesso(TipoAcesso.valueOf(userRequestDto.getTipoAcesso()));
+        user.setNome(userCreateDto.getNome());
+        user.setEmail(userCreateDto.getEmail());
+        user.setSenha(passwordEncoder.encode(userCreateDto.getSenha()));
+        user.setTipoAcesso(userCreateDto.getTipoAcesso());
 
-        user = userRepository.save(user);
-
-        return new UserResponseDto(user.getId(), user.getNome(), user.getEmail(), user.getTipoAcesso().name());
+        return convertToDto(userRepository.save(user));
     }
 
     @Transactional
-    public String userUpdate(UUID id, UserRequestDto userRequestDto) {
+    public UserResponseDto updateUser(UUID id, UserUpdateDto userUpdateDto) {
         User user = userRepository.findById(id)
-            .orElseThrow(() -> new MessageException("Usuário não encontrado."));
+            .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com ID: " + id));
 
-        // Atualiza apenas os campos que não são nulos ou vazios
-        if (userRequestDto.getNome() != null && !userRequestDto.getNome().trim().isEmpty()) {
-            user.setNome(userRequestDto.getNome());
+        // Verifica se o novo email já existe em outro usuário
+        if (!user.getEmail().equals(userUpdateDto.getEmail()) && 
+            userRepository.existsByEmail(userUpdateDto.getEmail())) {
+            throw new BusinessRuleException("E-mail já está em uso por outro usuário");
         }
 
-        if (userRequestDto.getEmail() != null && !userRequestDto.getEmail().trim().isEmpty()) {
-            user.setEmail(userRequestDto.getEmail());
+        user.setNome(userUpdateDto.getNome());
+        user.setEmail(userUpdateDto.getEmail());
+        user.setTipoAcesso(userUpdateDto.getTipoAcesso());
+
+        // Atualiza senha apenas se for fornecida
+        if (userUpdateDto.getSenha() != null && !userUpdateDto.getSenha().isBlank()) {
+            user.setSenha(passwordEncoder.encode(userUpdateDto.getSenha()));
         }
 
-        if (userRequestDto.getSenha() != null && !userRequestDto.getSenha().trim().isEmpty()) {
-            user.setSenha(passwordEncoder.encode(userRequestDto.getSenha()));
-        }
-
-        if (userRequestDto.getTipoAcesso() != null) {
-            user.setTipoAcesso(TipoAcesso.valueOf(userRequestDto.getTipoAcesso()));
-        }
-
-        userRepository.save(user);
-
-        return "Usuário atualizado com sucesso.";
+        return convertToDto(userRepository.save(user));
     }
 
     @Transactional
-    public String userDelete(UUID id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new MessageException("Usuário não encontrado."));
-
-        user.setAtivo(false);
-
-        userRepository.save(user);
-        return "Usuário excluído logicamente com sucesso.";
+    public void deleteUser(UUID id) {
+        if (!userRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Usuário não encontrado");
+        }
+        userRepository.deleteById(id);
     }
 
-    public Optional<User> findByIdAndAtivoTrue(UUID id) {
-        return userRepository.findByIdAndAtivoTrue(id);
+    private UserResponseDto convertToDto(User user) {
+        return new UserResponseDto(
+            user.getId(),
+            user.getNome(),
+            user.getEmail(),
+            user.getTipoAcesso().toString()
+        );
     }
-
-    public List<User> findAllActiveUsers() {
-        return userRepository.findByAtivoTrue();
-    }
-
 }
