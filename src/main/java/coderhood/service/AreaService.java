@@ -4,7 +4,9 @@ import coderhood.dto.AreaDto;
 import coderhood.dto.GeoJsonDto;
 import coderhood.exception.MessageException;
 import coderhood.model.Area;
+import coderhood.model.Talhao;
 import coderhood.repository.AreaRepository;
+import coderhood.repository.TalhaoRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -24,12 +26,27 @@ public class AreaService {
     @Autowired
     private GeoJsonService geoJsonService;
 
+    @Autowired
+    private TalhaoRepository talhaoRepository;
+
+
     public Area createArea(@Valid AreaDto areaDTO) {
         validateGeoJson(areaDTO.getGeojson());
-        
+
         Area area = convertToEntity(areaDTO);
-        return areaRepository.save(area);
+        Area savedArea = areaRepository.save(area);
+
+        try {
+            List<Talhao> talhoes = geoJsonService.extractTalhoesFromGeoJson(areaDTO.getGeojson(), savedArea);
+            talhaoRepository.saveAll(talhoes);
+            savedArea.setTalhoes(talhoes);
+        } catch (Exception e) {
+            throw new MessageException("Erro ao processar os talhões: " + e.getMessage());
+        }
+
+        return savedArea;
     }
+
 
     public Optional<Area> findAreaById(UUID id) {
         return areaRepository.findById(id);

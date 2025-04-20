@@ -6,6 +6,9 @@ import jakarta.validation.constraints.Size;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Setter
@@ -35,4 +38,8 @@ public class Area {
     private String cultura;
 
     private Double produtividade;
+
+    @OneToMany(mappedBy = "area", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Talhao> talhoes = new ArrayList<>();
+
 }
