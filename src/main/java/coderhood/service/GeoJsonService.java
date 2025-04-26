@@ -77,7 +77,6 @@ public class GeoJsonService {
             talhao.setSafra(properties.path("SAFRA").asText());
             talhao.setGeojson(geometry.toString());
             
-            // Adicione produtividade se existir no GeoJSON
             if (properties.has("PRODUTIVIDADE")) {
                 talhao.setProdutividadePorAno(properties.path("PRODUTIVIDADE").asDouble());
             }
