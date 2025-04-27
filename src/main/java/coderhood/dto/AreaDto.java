@@ -1,7 +1,6 @@
 package coderhood.dto;
 
 import java.util.List;
-
 import coderhood.model.StatusArea;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -12,7 +11,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AreaDto {
-    private String id;
+    private Long id;  // Alterado de String para Long
     private String nome;
     private String estado;
     private String cidade;

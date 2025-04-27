@@ -14,10 +14,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @Tag(name = "Usuários", description = "API para gerenciamento de usuários")
 @RestController
@@ -49,16 +49,25 @@ public class UserController {
         @ApiResponse(responseCode = "400", description = "Dados inválidos",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "404", description = "Usuário não encontrado",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-        @ApiResponse(responseCode = "409", description = "E-mail já está em uso",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @PutMapping("/{userId}")
-    public ResponseEntity<UserResponseDto> updateUser(
-            @PathVariable UUID userId,
-            @Valid @RequestBody UserUpdateDto userUpdateDto) {
-        UserResponseDto updatedUser = userService.updateUser(userId, userUpdateDto);
+    @PutMapping("/{id}")
+    public ResponseEntity<UserResponseDto> updateUser(@PathVariable Long id, 
+                                                      @Valid @RequestBody UserUpdateDto userUpdateDto) {
+        UserResponseDto updatedUser = userService.updateUser(id, userUpdateDto);
         return ResponseEntity.ok(updatedUser);
+    }
+
+    @Operation(summary = "Excluir um usuário")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Usuário excluído com sucesso"),
+        @ApiResponse(responseCode = "404", description = "Usuário não encontrado",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Buscar usuário por ID")
@@ -68,48 +77,17 @@ public class UserController {
         @ApiResponse(responseCode = "404", description = "Usuário não encontrado",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @GetMapping("/{userId}")
-    public ResponseEntity<UserResponseDto> getUserById(@PathVariable UUID userId) {
-        UserResponseDto user = userService.getUserById(userId);
+    @GetMapping("/{id}")
+    public ResponseEntity<UserResponseDto> getUserById(@PathVariable Long id) {
+        UserResponseDto user = userService.getUserById(id);
         return ResponseEntity.ok(user);
     }
 
-    @Operation(summary = "Listar todos os usuários")
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Lista de usuários retornada com sucesso",
-            content = @Content(schema = @Schema(implementation = UserResponseDto.class))),
-        @ApiResponse(responseCode = "204", description = "Nenhum usuário cadastrado")
-    })
+    @Operation(summary = "Buscar todos os usuários")
+    @ApiResponse(responseCode = "200", description = "Usuários encontrados",
+        content = @Content(schema = @Schema(implementation = UserResponseDto.class)))
     @GetMapping
-    public ResponseEntity<List<UserResponseDto>> getAllUsers() {
-        List<UserResponseDto> users = userService.getAllUsers();
-        return users.isEmpty() ? 
-            ResponseEntity.noContent().build() : 
-            ResponseEntity.ok(users);
-    }
-
-    @Operation(summary = "Excluir usuário")
-    @ApiResponses({
-        @ApiResponse(responseCode = "204", description = "Usuário excluído com sucesso"),
-        @ApiResponse(responseCode = "404", description = "Usuário não encontrado",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
-    @DeleteMapping("/{userId}")
-    public ResponseEntity<Void> deleteUser(@PathVariable UUID userId) {
-        userService.deleteUser(userId);
-        return ResponseEntity.noContent().build();
-    }
-
-    // Classe interna para padronização de respostas de erro
-    @Schema(description = "Modelo padrão para respostas de erro")
-    private static class ErrorResponse {
-        @Schema(description = "Código do erro", example = "USER_NOT_FOUND")
-        public String code;
-        
-        @Schema(description = "Mensagem descritiva do erro", example = "Usuário não encontrado")
-        public String message;
-        
-        @Schema(description = "Timestamp do erro", example = "2023-01-01T12:00:00Z")
-        public String timestamp;
+    public List<UserResponseDto> getAllUsers() {
+        return userService.getAllUsers();
     }
 }

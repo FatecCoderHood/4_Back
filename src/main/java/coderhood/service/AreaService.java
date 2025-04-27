@@ -1,10 +1,9 @@
 package coderhood.service;
 
-import coderhood.dto.AreaDto;
-import coderhood.dto.AreaGeoJsonDto;
-import coderhood.dto.TalhaoDto;
+import coderhood.dto.*;
 import coderhood.exception.MessageException;
 import coderhood.model.Area;
+import coderhood.model.StatusArea;
 import coderhood.model.Talhao;
 import coderhood.repository.AreaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +23,7 @@ public class AreaService {
         area.setNome(areaDTO.getNome());
         area.setEstado(areaDTO.getEstado());
         area.setCidade(areaDTO.getCidade());
+        area.setStatus(areaDTO.getStatus() != null ? areaDTO.getStatus() : StatusArea.EM_ANALISE);
         return areaRepository.save(area);
     }
 
@@ -32,6 +32,7 @@ public class AreaService {
         area.setNome(areaDTO.getNome());
         area.setEstado(areaDTO.getEstado());
         area.setCidade(areaDTO.getCidade());
+        area.setStatus(StatusArea.EM_ANALISE);
 
         if (areaDTO.getGeojson() != null) {
             List<Talhao> talhoes = processarGeoJson(areaDTO.getGeojson());
@@ -62,8 +63,9 @@ public class AreaService {
                 talhao.setSolo(getStringProperty(properties, "SOLO", "solo"));
                 talhao.setCultura(getStringProperty(properties, "CULTURA", "cultura"));
                 talhao.setSafra(getStringProperty(properties, "SAFRA", "safra"));
+                talhao.setProdutividadePorAno(getDoubleProperty(properties, "PRODUTIVIDADE", "produtividadePorAno"));
 
-                talhao.setGeojson(feature.toString()); // Salvando o feature completo como GeoJSON
+                talhao.setGeojson(feature.toString());
                 return talhao;
             }).collect(Collectors.toList());
 
@@ -89,7 +91,7 @@ public class AreaService {
         return value != null ? value.toString() : null;
     }
 
-    public Optional<Area> findAreaById(UUID id) {
+    public Optional<Area> findAreaById(Long id) {
         return areaRepository.findById(id);
     }
 
@@ -97,15 +99,18 @@ public class AreaService {
         return areaRepository.findAll();
     }
 
-    public Area updateArea(UUID id, AreaDto areaDto) {
+    public Area updateArea(Long id, AreaDto areaDto) {
         Area area = getAreaOrThrow(id);
         area.setNome(areaDto.getNome());
         area.setEstado(areaDto.getEstado());
         area.setCidade(areaDto.getCidade());
+        if (areaDto.getStatus() != null) {
+            area.setStatus(areaDto.getStatus());
+        }
         return areaRepository.save(area);
     }
 
-    public Area updateAreaWithGeoJson(UUID id, AreaGeoJsonDto areaDto) {
+    public Area updateAreaWithGeoJson(Long id, AreaGeoJsonDto areaDto) {
         Area area = getAreaOrThrow(id);
         area.setNome(areaDto.getNome());
         area.setEstado(areaDto.getEstado());
@@ -120,14 +125,14 @@ public class AreaService {
         return areaRepository.save(area);
     }
 
-    public void deleteArea(UUID id) {
+    public void deleteArea(Long id) {
         if (!areaRepository.existsById(id)) {
             throw new MessageException("Área não encontrada");
         }
         areaRepository.deleteById(id);
     }
 
-    public Talhao updateTalhao(UUID areaId, UUID talhaoId, TalhaoDto talhaoDto) {
+    public Talhao updateTalhao(Long areaId, Long talhaoId, TalhaoDto talhaoDto) {
         Area area = getAreaOrThrow(areaId);
         Talhao talhao = area.getTalhoes().stream()
                 .filter(t -> t.getId().equals(talhaoId))
@@ -139,6 +144,8 @@ public class AreaService {
         talhao.setSolo(talhaoDto.getSolo());
         talhao.setCultura(talhaoDto.getCultura());
         talhao.setSafra(talhaoDto.getSafra());
+        talhao.setProdutividadePorAno(talhaoDto.getProdutividadePorAno());
+        talhao.setGeojson(talhaoDto.getGeojson());
 
         return areaRepository.save(area).getTalhoes().stream()
                 .filter(t -> t.getId().equals(talhaoId))
@@ -146,7 +153,7 @@ public class AreaService {
                 .orElseThrow(() -> new MessageException("Erro ao atualizar talhão"));
     }
 
-    public void deleteTalhao(UUID areaId, UUID talhaoId) {
+    public void deleteTalhao(Long areaId, Long talhaoId) {
         Area area = getAreaOrThrow(areaId);
         boolean removed = area.getTalhoes().removeIf(t -> t.getId().equals(talhaoId));
         if (!removed) {
@@ -155,16 +162,23 @@ public class AreaService {
         areaRepository.save(area);
     }
 
-    private Area getAreaOrThrow(UUID id) {
+    private Area getAreaOrThrow(Long id) {
         return areaRepository.findById(id)
                 .orElseThrow(() -> new MessageException("Área não encontrada"));
     }
 
-    public Map<String, Object> verificarProgresso(UUID id) {
+    public Map<String, Object> verificarProgresso(Long id) {
         Area area = getAreaOrThrow(id);
         Map<String, Object> progresso = new HashMap<>();
         progresso.put("etapa1Completa", area.getNome() != null && !area.getNome().isEmpty());
         progresso.put("etapa2Completa", !area.getTalhoes().isEmpty());
         return progresso;
+    }
+
+    public Area updateFarmStatus(Long id, String status) {
+        Area area = getAreaOrThrow(id);
+        StatusArea statusEnum = StatusArea.valueOf(status.toUpperCase());
+        area.setStatus(statusEnum);
+        return areaRepository.save(area);
     }
 }
