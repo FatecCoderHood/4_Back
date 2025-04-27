@@ -24,11 +24,25 @@ public class AreaController {
 
     @PostMapping
     @Operation(summary = "Cria uma nova área com ou sem GeoJSON")
-    public ResponseEntity<?> createArea(@RequestBody AreaGeoJsonDto areaDTO) {
-        try {
-            Area area = areaService.createAreaWithGeoJson(areaDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(area);
-        } catch (Exception e) {
+    public ResponseEntity<?> createArea(
+        @RequestBody AreaDto areaDto)
+        // @RequestPart("data") AreaDto areaDto,
+        // @RequestParam(value = "file", required = false) MultipartFile geojsonFile)
+    {
+        
+        try
+        {
+            if (areaDto.getGeojson() != null && !areaDto.getGeojson().isEmpty())
+            {
+                log.info("RTX was here - Nome: {}", areaDto.getNome());
+                // areaDto.setGeojsonFile(geojsonFile);
+            }
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(
+                areaService.createArea(areaDto)
+            );
+        } catch (Exception e)
+        {
             log.error("Erro ao criar área: ", e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -47,11 +61,15 @@ public class AreaController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateArea(@PathVariable UUID id, @RequestBody AreaGeoJsonDto areaDto) {
-        try {
-            Area updatedArea = areaService.updateAreaWithGeoJson(id, areaDto);
-            return ResponseEntity.ok(updatedArea);
-        } catch (Exception e) {
+    public ResponseEntity<?> updateArea(
+        @PathVariable UUID id,
+        @RequestBody AreaDto areaDto)
+    {
+        try
+        {
+            return ResponseEntity.ok(areaService.updateArea(id, areaDto));
+        } catch (Exception e)
+        {
             log.error("Erro ao atualizar área: ", e);
             return ResponseEntity.notFound().build();
         }

@@ -2,8 +2,9 @@ package coderhood.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.util.UUID;
+import org.locationtech.jts.geom.Geometry;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
@@ -16,9 +17,9 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 public class Talhao {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
-
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+  
     @Lob
     @Column(name = "geojson")
     private String geojson;
@@ -28,6 +29,13 @@ public class Talhao {
     private String solo;
     private String cultura;
     private String safra;
+
+    // @Column(name = "geometry", columnDefinition = "SDO_GEOMETRY")
+    // private Geometry geometry;
+    @Column(name = "geometry", columnDefinition = "SDO_GEOMETRY")
+    @JdbcTypeCode(SqlTypes.GEOMETRY)
+    private Geometry geometry;
+
     private Double produtividadePorAno;
 
     @ManyToOne(fetch = FetchType.LAZY)

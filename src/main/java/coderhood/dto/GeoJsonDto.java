@@ -10,4 +10,3 @@ public class GeoJsonDto {
     @NotBlank(message = "GeoJSON é obrigatório")
     private String geojson;
 }
-

@@ -1,62 +1,68 @@
 package coderhood.service;
 
 import coderhood.dto.AreaDto;
-import coderhood.dto.AreaGeoJsonDto;
 import coderhood.dto.TalhaoDto;
+import coderhood.dto.geojson.FeatureCollectionDto;
+import coderhood.exception.GeoJsonParsingException;
 import coderhood.exception.MessageException;
 import coderhood.model.Area;
 import coderhood.model.Talhao;
 import coderhood.repository.AreaRepository;
+import coderhood.utils.GeoJsonParser;
+import coderhood.utils.GeometryMapper;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class AreaService {
 
     @Autowired
     private AreaRepository areaRepository;
 
-    public Area createArea(AreaDto areaDTO) {
+    public Area createArea(AreaDto areaDto) throws IOException, GeoJsonParsingException
+    {
         Area area = new Area();
-        area.setNome(areaDTO.getNome());
-        area.setEstado(areaDTO.getEstado());
-        area.setCidade(areaDTO.getCidade());
-        return areaRepository.save(area);
-    }
 
-    public Area createAreaWithGeoJson(AreaGeoJsonDto areaDTO) {
-        Area area = new Area();
-        area.setNome(areaDTO.getNome());
-        area.setEstado(areaDTO.getEstado());
-        area.setCidade(areaDTO.getCidade());
+        area.setNome(areaDto.getNome());
+        area.setEstado(areaDto.getEstado());
+        area.setCidade(areaDto.getCidade());
 
-        if (areaDTO.getGeojson() != null) {
-            List<Talhao> talhoes = processarGeoJson(areaDTO.getGeojson());
+        if (areaDto.getGeojson() != null && !areaDto.getGeojson().isEmpty())
+        {
+            ObjectMapper mapper = new ObjectMapper();
+            String content = mapper.writeValueAsString(areaDto.getGeojson());
+            // String content = new String(areaDto.getGeojson().getBytes(), StandardCharsets.UTF_8);
+            List<Talhao> talhoes = processarGeoJson(GeoJsonParser.fromGeoJson(content));
             talhoes.forEach(area::addTalhao);
         }
 
         return areaRepository.save(area);
     }
 
-    @SuppressWarnings("unchecked")
-    private List<Talhao> processarGeoJson(Map<String, Object> geojson) {
-        try {
-            if (!(geojson.get("features") instanceof List)) {
-                throw new MessageException("Formato GeoJSON inválido - 'features' deve ser uma lista");
-            }
+    private List<Talhao> processarGeoJson(FeatureCollectionDto featureCollection)
+    {
+        try
+        {
+            return featureCollection.getFeatures().stream().map(feature -> 
+            {
+                Map<String, Object> properties = feature.getProperties();
 
-            List<Map<String, Object>> features = (List<Map<String, Object>>) geojson.get("features");
-
-            return features.stream().map(feature -> {
-                Map<String, Object> properties = (Map<String, Object>) feature.get("properties");
-                if (properties == null) {
+                if (properties == null)
+                {
                     throw new MessageException("Formato GeoJSON inválido - 'properties' não encontrado");
                 }
 
                 Talhao talhao = new Talhao();
+                
                 talhao.setMnTl(getIntegerProperty(properties, "MN_TL", "mnTl"));
                 talhao.setAreaHaTl(getDoubleProperty(properties, "AREA_HA_TL", "areaHaTl"));
                 talhao.setSolo(getStringProperty(properties, "SOLO", "solo"));
@@ -64,6 +70,10 @@ public class AreaService {
                 talhao.setSafra(getStringProperty(properties, "SAFRA", "safra"));
 
                 talhao.setGeojson(feature.toString()); // Salvando o feature completo como GeoJSON
+                talhao.setGeometry(GeometryMapper.fromDto(feature.getGeometry()));
+
+                log.info("RTX was here - AreaService::processarGeoSjon {}", talhao.getGeometry().toText());
+
                 return talhao;
             }).collect(Collectors.toList());
 
@@ -97,25 +107,22 @@ public class AreaService {
         return areaRepository.findAll();
     }
 
-    public Area updateArea(UUID id, AreaDto areaDto) {
+    public Area updateArea(UUID id, AreaDto areaDto) throws IOException, GeoJsonParsingException
+    {
         Area area = getAreaOrThrow(id);
-        area.setNome(areaDto.getNome());
-        area.setEstado(areaDto.getEstado());
-        area.setCidade(areaDto.getCidade());
-        return areaRepository.save(area);
-    }
 
-    public Area updateAreaWithGeoJson(UUID id, AreaGeoJsonDto areaDto) {
-        Area area = getAreaOrThrow(id);
         area.setNome(areaDto.getNome());
         area.setEstado(areaDto.getEstado());
         area.setCidade(areaDto.getCidade());
 
-        if (areaDto.getGeojson() != null) {
-            area.clearTalhoes();
-            List<Talhao> novosTalhoes = processarGeoJson(areaDto.getGeojson());
-            novosTalhoes.forEach(area::addTalhao);
-        }
+        // if (areaDto.getGeojsonFile() != null && !areaDto.getGeojsonFile().isEmpty())
+        // {
+        //     area.clearTalhoes();
+
+        //     String content = new String(areaDto.getGeojsonFile().getBytes(), StandardCharsets.UTF_8);
+        //     List<Talhao> novosTalhoes = processarGeoJson(GeoJsonParser.fromGeoJson(content));
+        //     novosTalhoes.forEach(area::addTalhao);
+        // }
 
         return areaRepository.save(area);
     }
