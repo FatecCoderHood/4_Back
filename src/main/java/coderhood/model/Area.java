@@ -2,12 +2,11 @@ package coderhood.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Getter
 @Setter
@@ -18,8 +17,9 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 public class Area {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // <- IMPORTANTE para Long (ordem automática)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Long id;
 
     @Column(nullable = false, length = 255)
     private String nome;
