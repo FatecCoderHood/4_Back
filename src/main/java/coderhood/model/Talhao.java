@@ -3,8 +3,6 @@ package coderhood.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.UUID;
-
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
 @Getter
@@ -16,8 +14,8 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 public class Talhao {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // <- Long ID em ordem
+    private Long id;
 
     @Lob
     @Column(name = "geojson")

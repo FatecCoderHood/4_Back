@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
-import java.util.UUID;
+
 import java.util.List;
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -19,8 +19,8 @@ import java.util.stream.Collectors;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // <- aqui também, tudo alinhado
+    private Long id;
 
     @NotBlank
     @Column(name = "nome")
@@ -59,13 +59,11 @@ public class User {
         private final TipoAcesso code;
         private final String description;
     
-        // Constructor
         RoleEnum(TipoAcesso code, String description) {
             this.code = code;
             this.description = description;
         }
     
-        // Getter methods
         public TipoAcesso getCode() {
             return code;
         }
@@ -74,14 +72,13 @@ public class User {
             return description;
         }
     
-        // Method to map role code to description
         public static String getRoleDescriptionByCode(TipoAcesso code) {
             for (RoleEnum role : RoleEnum.values()) {
                 if (role.getCode() == code) {
                     return role.getDescription();
                 }
             }
-            return null; // or you can return a default value
+            return null;
         }
     }
 
@@ -94,6 +91,6 @@ public class User {
     }
 
     public String getRole() {
-        return RoleEnum.getRoleDescriptionByCode(this.tipoAcesso); // Mapping code to string
+        return RoleEnum.getRoleDescriptionByCode(this.tipoAcesso);
     }
 }
