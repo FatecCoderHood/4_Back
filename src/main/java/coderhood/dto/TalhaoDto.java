@@ -2,14 +2,12 @@ package coderhood.dto;
 
 import lombok.*;
 
-import java.util.UUID;
-
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class TalhaoDto {
-    private UUID id;
+    private Long id;  // Alterado de UUID para Long
     private String geojson;
     private Integer mnTl;
     private Double areaHaTl;

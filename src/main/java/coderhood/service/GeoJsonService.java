@@ -70,6 +70,7 @@ public class GeoJsonService {
             JsonNode geometry = feature.path("geometry");
             
             TalhaoDto talhao = new TalhaoDto();
+            // O ID não é extraído do GeoJSON, será gerado automaticamente
             talhao.setMnTl(properties.path("MN_TL").asInt());
             talhao.setAreaHaTl(properties.path("AREA_HA_TL").asDouble());
             talhao.setSolo(properties.path("SOLO").asText());

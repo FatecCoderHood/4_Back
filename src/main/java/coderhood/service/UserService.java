@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -25,7 +24,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
-    public UserResponseDto getUserById(UUID id) {
+    public UserResponseDto getUserById(Long id) { // Mudou para Long
         return userRepository.findById(id)
             .map(this::convertToDto)
             .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
@@ -54,7 +53,7 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponseDto updateUser(UUID id, UserUpdateDto userUpdateDto) {
+    public UserResponseDto updateUser(Long id, UserUpdateDto userUpdateDto) { // Mudou para Long
         User user = userRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado com ID: " + id));
 
@@ -77,7 +76,7 @@ public class UserService {
     }
 
     @Transactional
-    public void deleteUser(UUID id) {
+    public void deleteUser(Long id) { // Mudou para Long
         if (!userRepository.existsById(id)) {
             throw new ResourceNotFoundException("Usuário não encontrado");
         }

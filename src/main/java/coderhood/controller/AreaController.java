@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 
 @CrossOrigin(origins = "http://localhost:3000")
 @Slf4j
@@ -35,7 +35,7 @@ public class AreaController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getAreaById(@PathVariable UUID id) {
+    public ResponseEntity<?> getAreaById(@PathVariable Long id) {
         return areaService.findAreaById(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -47,7 +47,7 @@ public class AreaController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateArea(@PathVariable UUID id, @RequestBody AreaGeoJsonDto areaDto) {
+    public ResponseEntity<?> updateArea(@PathVariable Long id, @RequestBody AreaGeoJsonDto areaDto) {
         try {
             Area updatedArea = areaService.updateAreaWithGeoJson(id, areaDto);
             return ResponseEntity.ok(updatedArea);
@@ -58,7 +58,7 @@ public class AreaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteArea(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteArea(@PathVariable Long id) {
         try {
             areaService.deleteArea(id);
             return ResponseEntity.noContent().build();
@@ -69,8 +69,8 @@ public class AreaController {
 
     @PutMapping("/{areaId}/talhoes/{talhaoId}")
     public ResponseEntity<?> updateTalhao(
-            @PathVariable UUID areaId,
-            @PathVariable UUID talhaoId,
+            @PathVariable Long areaId,
+            @PathVariable Long talhaoId,
             @RequestBody TalhaoDto talhaoDto) {
         try {
             var updatedTalhao = areaService.updateTalhao(areaId, talhaoId, talhaoDto);
@@ -83,13 +83,25 @@ public class AreaController {
 
     @DeleteMapping("/{areaId}/talhoes/{talhaoId}")
     public ResponseEntity<Void> deleteTalhao(
-            @PathVariable UUID areaId,
-            @PathVariable UUID talhaoId) {
+            @PathVariable Long areaId,
+            @PathVariable Long talhaoId) {
         try {
             areaService.deleteTalhao(areaId, talhaoId);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateFarmStatus(@PathVariable Long id, @RequestBody Map<String, String> statusRequest) {
+        try {
+            String status = statusRequest.get("status");
+            Area updatedArea = areaService.updateFarmStatus(id, status);
+            return ResponseEntity.ok(updatedArea);
+        } catch (Exception e) {
+            log.error("Erro ao atualizar status da fazenda: ", e);
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }
