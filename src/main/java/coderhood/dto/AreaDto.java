@@ -1,24 +1,20 @@
 package coderhood.dto;
 
+import java.util.List;
+import coderhood.model.StatusArea;
 import jakarta.validation.constraints.NotNull;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
 @Setter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AreaDto {
-
-    @NotNull
+    private Long id;  // Alterado de String para Long
     private String nome;
-
-    private String localizacao;
-
-    @NotNull(message = "O GeoJSON é obrigatório")
-    private String geojson; 
-
-    private String cultura;
-
-    private Double produtividade;
+    private String estado;
+    private String cidade;
+    private StatusArea status;
+    private List<TalhaoDto> talhoes;
 }

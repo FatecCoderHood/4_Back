@@ -1,98 +1,184 @@
 package coderhood.service;
 
-import coderhood.dto.AreaDto;
-import coderhood.dto.GeoJsonDto;
+import coderhood.dto.*;
 import coderhood.exception.MessageException;
 import coderhood.model.Area;
+import coderhood.model.StatusArea;
+import coderhood.model.Talhao;
 import coderhood.repository.AreaRepository;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.validation.annotation.Validated;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
-@Validated
 public class AreaService {
 
     @Autowired
     private AreaRepository areaRepository;
 
-    @Autowired
-    private GeoJsonService geoJsonService;
-
-    public Area createArea(@Valid AreaDto areaDTO) {
-        validateGeoJson(areaDTO.getGeojson());
-        
-        Area area = convertToEntity(areaDTO);
+    public Area createArea(AreaDto areaDTO) {
+        Area area = new Area();
+        area.setNome(areaDTO.getNome());
+        area.setEstado(areaDTO.getEstado());
+        area.setCidade(areaDTO.getCidade());
+        area.setStatus(areaDTO.getStatus() != null ? areaDTO.getStatus() : StatusArea.EM_ANALISE);
         return areaRepository.save(area);
     }
 
-    public Optional<Area> findAreaById(UUID id) {
+    public Area createAreaWithGeoJson(AreaGeoJsonDto areaDTO) {
+        Area area = new Area();
+        area.setNome(areaDTO.getNome());
+        area.setEstado(areaDTO.getEstado());
+        area.setCidade(areaDTO.getCidade());
+        area.setStatus(StatusArea.EM_ANALISE);
+
+        if (areaDTO.getGeojson() != null) {
+            List<Talhao> talhoes = processarGeoJson(areaDTO.getGeojson());
+            talhoes.forEach(area::addTalhao);
+        }
+
+        return areaRepository.save(area);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Talhao> processarGeoJson(Map<String, Object> geojson) {
+        try {
+            if (!(geojson.get("features") instanceof List)) {
+                throw new MessageException("Formato GeoJSON inválido - 'features' deve ser uma lista");
+            }
+
+            List<Map<String, Object>> features = (List<Map<String, Object>>) geojson.get("features");
+
+            return features.stream().map(feature -> {
+                Map<String, Object> properties = (Map<String, Object>) feature.get("properties");
+                if (properties == null) {
+                    throw new MessageException("Formato GeoJSON inválido - 'properties' não encontrado");
+                }
+
+                Talhao talhao = new Talhao();
+                talhao.setMnTl(getIntegerProperty(properties, "MN_TL", "mnTl"));
+                talhao.setAreaHaTl(getDoubleProperty(properties, "AREA_HA_TL", "areaHaTl"));
+                talhao.setSolo(getStringProperty(properties, "SOLO", "solo"));
+                talhao.setCultura(getStringProperty(properties, "CULTURA", "cultura"));
+                talhao.setSafra(getStringProperty(properties, "SAFRA", "safra"));
+                talhao.setProdutividadePorAno(getDoubleProperty(properties, "PRODUTIVIDADE", "produtividadePorAno"));
+
+                talhao.setGeojson(feature.toString());
+                return talhao;
+            }).collect(Collectors.toList());
+
+        } catch (ClassCastException e) {
+            throw new MessageException("Erro de tipo no GeoJSON: " + e.getMessage());
+        } catch (Exception e) {
+            throw new MessageException("Erro ao processar GeoJSON: " + e.getMessage());
+        }
+    }
+
+    private Integer getIntegerProperty(Map<String, Object> properties, String primaryKey, String secondaryKey) {
+        Object value = properties.getOrDefault(primaryKey, properties.get(secondaryKey));
+        return value != null ? Integer.parseInt(value.toString()) : null;
+    }
+
+    private Double getDoubleProperty(Map<String, Object> properties, String primaryKey, String secondaryKey) {
+        Object value = properties.getOrDefault(primaryKey, properties.get(secondaryKey));
+        return value != null ? Double.parseDouble(value.toString()) : null;
+    }
+
+    private String getStringProperty(Map<String, Object> properties, String primaryKey, String secondaryKey) {
+        Object value = properties.getOrDefault(primaryKey, properties.get(secondaryKey));
+        return value != null ? value.toString() : null;
+    }
+
+    public Optional<Area> findAreaById(Long id) {
         return areaRepository.findById(id);
     }
 
     public List<Area> findAllAreas() {
-        return (List<Area>) areaRepository.findAll();
+        return areaRepository.findAll();
     }
 
-    public Area updateArea(UUID id, @Valid AreaDto areaDto) {
-        Area existingArea = getAreaOrThrow(id);
-
-        if (areaDto.getGeojson() != null && !areaDto.getGeojson().isEmpty()) {
-            validateGeoJson(areaDto.getGeojson());
-            existingArea.setGeojson(areaDto.getGeojson());
-        }
-
-        updateEntityFromDto(existingArea, areaDto);
-        return areaRepository.save(existingArea);
-    }
-
-    public Area updateAreaGeoJson(UUID id, @Valid GeoJsonDto geoJsonDto) {
-        validateGeoJson(geoJsonDto.getGeojson());
-        
+    public Area updateArea(Long id, AreaDto areaDto) {
         Area area = getAreaOrThrow(id);
-        area.setGeojson(geoJsonDto.getGeojson());
+        area.setNome(areaDto.getNome());
+        area.setEstado(areaDto.getEstado());
+        area.setCidade(areaDto.getCidade());
+        if (areaDto.getStatus() != null) {
+            area.setStatus(areaDto.getStatus());
+        }
         return areaRepository.save(area);
     }
 
-    public void deleteArea(UUID id) {
+    public Area updateAreaWithGeoJson(Long id, AreaGeoJsonDto areaDto) {
+        Area area = getAreaOrThrow(id);
+        area.setNome(areaDto.getNome());
+        area.setEstado(areaDto.getEstado());
+        area.setCidade(areaDto.getCidade());
+
+        if (areaDto.getGeojson() != null) {
+            area.clearTalhoes();
+            List<Talhao> novosTalhoes = processarGeoJson(areaDto.getGeojson());
+            novosTalhoes.forEach(area::addTalhao);
+        }
+
+        return areaRepository.save(area);
+    }
+
+    public void deleteArea(Long id) {
         if (!areaRepository.existsById(id)) {
-            throw new MessageException("Área não encontrada com ID: " + id);
+            throw new MessageException("Área não encontrada");
         }
         areaRepository.deleteById(id);
     }
 
-    private Area getAreaOrThrow(UUID id) {
+    public Talhao updateTalhao(Long areaId, Long talhaoId, TalhaoDto talhaoDto) {
+        Area area = getAreaOrThrow(areaId);
+        Talhao talhao = area.getTalhoes().stream()
+                .filter(t -> t.getId().equals(talhaoId))
+                .findFirst()
+                .orElseThrow(() -> new MessageException("Talhão não encontrado"));
+
+        talhao.setMnTl(talhaoDto.getMnTl());
+        talhao.setAreaHaTl(talhaoDto.getAreaHaTl());
+        talhao.setSolo(talhaoDto.getSolo());
+        talhao.setCultura(talhaoDto.getCultura());
+        talhao.setSafra(talhaoDto.getSafra());
+        talhao.setProdutividadePorAno(talhaoDto.getProdutividadePorAno());
+        talhao.setGeojson(talhaoDto.getGeojson());
+
+        return areaRepository.save(area).getTalhoes().stream()
+                .filter(t -> t.getId().equals(talhaoId))
+                .findFirst()
+                .orElseThrow(() -> new MessageException("Erro ao atualizar talhão"));
+    }
+
+    public void deleteTalhao(Long areaId, Long talhaoId) {
+        Area area = getAreaOrThrow(areaId);
+        boolean removed = area.getTalhoes().removeIf(t -> t.getId().equals(talhaoId));
+        if (!removed) {
+            throw new MessageException("Talhão não encontrado");
+        }
+        areaRepository.save(area);
+    }
+
+    private Area getAreaOrThrow(Long id) {
         return areaRepository.findById(id)
-                .orElseThrow(() -> new MessageException("Área não encontrada: " + id));
+                .orElseThrow(() -> new MessageException("Área não encontrada"));
     }
 
-    private void validateGeoJson(String geojson) {
-        if (geojson == null || geojson.isEmpty()) {
-            throw new MessageException("O conteúdo do GeoJSON é obrigatório.");
-        }
-        try {
-            geoJsonService.validateGeoJson(geojson);
-        } catch (Exception e) {
-            throw new MessageException("GeoJSON inválido: " + e.getMessage());
-        }
+    public Map<String, Object> verificarProgresso(Long id) {
+        Area area = getAreaOrThrow(id);
+        Map<String, Object> progresso = new HashMap<>();
+        progresso.put("etapa1Completa", area.getNome() != null && !area.getNome().isEmpty());
+        progresso.put("etapa2Completa", !area.getTalhoes().isEmpty());
+        return progresso;
     }
 
-    private Area convertToEntity(AreaDto dto) {
-        Area area = new Area();
-        updateEntityFromDto(area, dto);
-        area.setGeojson(dto.getGeojson());
-        return area;
-    }
-
-    private void updateEntityFromDto(Area area, AreaDto dto) {
-        area.setNome(dto.getNome());
-        area.setLocalizacao(dto.getLocalizacao());
-        area.setCultura(dto.getCultura());
-        area.setProdutividade(dto.getProdutividade());
+    public Area updateFarmStatus(Long id, String status) {
+        Area area = getAreaOrThrow(id);
+        StatusArea statusEnum = StatusArea.valueOf(status.toUpperCase());
+        area.setStatus(statusEnum);
+        return areaRepository.save(area);
     }
 }
