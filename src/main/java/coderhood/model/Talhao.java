@@ -3,6 +3,9 @@ package coderhood.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
 @Getter
@@ -32,4 +35,11 @@ public class Talhao {
     @JoinColumn(name = "area_id", nullable = false)
     @JsonBackReference
     private Area area;
+
+    @ElementCollection
+    @CollectionTable(name = "talhao_ervas", joinColumns = @JoinColumn(name = "talhao_id"))
+    @Lob
+    @Column(name = "erva_daninha")
+    private List<String> ervasDaninhas = new ArrayList<>();
+
 }
