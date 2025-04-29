@@ -1,11 +1,11 @@
 package coderhood.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -17,4 +17,6 @@ public class AreaGeoJsonDto {
     private String cidade;
     private String estado;
     private Map<String, Object> geojson;
+    private Map<String, Object> ervasDaninhasGeojson; // Nome corrigido para manter consistência
+    private Map<String, Double> produtividadePorAno; // Nome corrigido para manter consistência
 }
