@@ -99,7 +99,7 @@ public class AreaService {
         return value != null ? value.toString() : null;
     }
 
-    public Optional<Area> findAreaById(UUID id) {
+    public Optional<Area> findAreaById(Long id) {
         return areaRepository.findById(id);
     }
 
@@ -107,7 +107,7 @@ public class AreaService {
         return areaRepository.findAll();
     }
 
-    public Area updateArea(UUID id, AreaDto areaDto) throws IOException, GeoJsonParsingException
+    public Area updateArea(Long id, AreaDto areaDto) throws IOException, GeoJsonParsingException
     {
         Area area = getAreaOrThrow(id);
 
@@ -127,14 +127,14 @@ public class AreaService {
         return areaRepository.save(area);
     }
 
-    public void deleteArea(UUID id) {
+    public void deleteArea(Long id) {
         if (!areaRepository.existsById(id)) {
             throw new MessageException("Área não encontrada");
         }
         areaRepository.deleteById(id);
     }
 
-    public Talhao updateTalhao(UUID areaId, UUID talhaoId, TalhaoDto talhaoDto) {
+    public Talhao updateTalhao(Long areaId, Long talhaoId, TalhaoDto talhaoDto) {
         Area area = getAreaOrThrow(areaId);
         Talhao talhao = area.getTalhoes().stream()
                 .filter(t -> t.getId().equals(talhaoId))
@@ -153,7 +153,7 @@ public class AreaService {
                 .orElseThrow(() -> new MessageException("Erro ao atualizar talhão"));
     }
 
-    public void deleteTalhao(UUID areaId, UUID talhaoId) {
+    public void deleteTalhao(Long areaId, Long talhaoId) {
         Area area = getAreaOrThrow(areaId);
         boolean removed = area.getTalhoes().removeIf(t -> t.getId().equals(talhaoId));
         if (!removed) {
@@ -162,12 +162,12 @@ public class AreaService {
         areaRepository.save(area);
     }
 
-    private Area getAreaOrThrow(UUID id) {
+    private Area getAreaOrThrow(Long id) {
         return areaRepository.findById(id)
                 .orElseThrow(() -> new MessageException("Área não encontrada"));
     }
 
-    public Map<String, Object> verificarProgresso(UUID id) {
+    public Map<String, Object> verificarProgresso(Long id) {
         Area area = getAreaOrThrow(id);
         Map<String, Object> progresso = new HashMap<>();
         progresso.put("etapa1Completa", area.getNome() != null && !area.getNome().isEmpty());

@@ -3,8 +3,6 @@ package coderhood.model;
 import jakarta.persistence.*;
 import lombok.*;
 import org.locationtech.jts.geom.Geometry;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
@@ -30,10 +28,7 @@ public class Talhao {
     private String cultura;
     private String safra;
 
-    // @Column(name = "geometry", columnDefinition = "SDO_GEOMETRY")
-    // private Geometry geometry;
-    @Column(name = "geometry", columnDefinition = "SDO_GEOMETRY")
-    @JdbcTypeCode(SqlTypes.GEOMETRY)
+    @Column(columnDefinition = "SDO_GEOMETRY")
     private Geometry geometry;
 
     private Double produtividadePorAno;

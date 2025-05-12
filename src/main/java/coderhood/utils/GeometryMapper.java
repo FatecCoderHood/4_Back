@@ -66,7 +66,7 @@ public class GeometryMapper {
                 .map(polygonCoords -> {
                     List<List<Number>> exteriorRing = polygonCoords.get(0); // Only exterior ring
                     Coordinate[] exteriorCoords = exteriorRing.stream()
-                            .map(coord -> new Coordinate(coord.get(0).doubleValue(), coord.get(1).doubleValue()))
+                            .map(coord -> new Coordinate(coord.get(1).doubleValue(), coord.get(0).doubleValue()))
                             .toArray(Coordinate[]::new);
                     LinearRing shell = geometryFactory.createLinearRing(exteriorCoords);
                     return geometryFactory.createPolygon(shell);
