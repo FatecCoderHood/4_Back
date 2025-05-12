@@ -2,7 +2,6 @@ package coderhood.dto;
 
 import java.util.List;
 import coderhood.model.StatusArea;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Getter
