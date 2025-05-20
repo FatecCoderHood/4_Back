@@ -42,4 +42,7 @@ public class Talhao {
     @Column(name = "erva_daninha")
     private List<String> ervasDaninhas = new ArrayList<>();
 
+    @OneToMany(mappedBy = "talhao", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TalhaoHistorico> historico = new ArrayList<>();
+
 }

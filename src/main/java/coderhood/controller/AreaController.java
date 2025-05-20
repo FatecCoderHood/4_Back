@@ -3,6 +3,8 @@ package coderhood.controller;
 import coderhood.dto.*;
 import coderhood.exception.MessageException;
 import coderhood.model.Area;
+import coderhood.model.TalhaoHistorico;
+import coderhood.repository.TalhaoHistoricoRepository;
 import coderhood.service.AreaService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +24,8 @@ public class AreaController {
 
     @Autowired
     private AreaService areaService;
+    @Autowired
+    private TalhaoHistoricoRepository talhaoHistoricoRepository;
 
     @PostMapping
     @Operation(summary = "Cria uma nova área com ou sem GeoJSON")
@@ -184,5 +188,13 @@ public class AreaController {
             log.error("Erro ao remover ervas daninhas", e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
+    }
+
+    @GetMapping("/{areaId}/talhoes/{talhaoId}/historico")
+    @Operation(summary = "Consulta o histórico de talhões")
+    public ResponseEntity<List<TalhaoHistorico>> getHistoricoTalhao(@PathVariable Long talhaoId) {
+        log.info("Consultando histórico do talhão ID {}", talhaoId);
+        List<TalhaoHistorico> historico = talhaoHistoricoRepository.findByTalhaoIdOrderByDataAlteracaoDesc(talhaoId);
+        return ResponseEntity.ok(historico);
     }
 }
