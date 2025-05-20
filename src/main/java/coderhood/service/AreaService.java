@@ -257,11 +257,12 @@ public class AreaService {
         return area;
     }
 
-    public List<Area> findAllAreas() {
+    public List<AreaDto> findAllAreas() {
         log.info("Buscando todas as áreas");
         List<Area> areas = areaRepository.findAll();
-        log.debug("Número de áreas encontradas: {}", areas.size());
-        return areas;
+        return areas.stream()
+                    .map(this::toDto)
+                    .collect(Collectors.toList());
     }
 
     public Area updateArea(Long id, AreaDto areaDto) {
@@ -456,5 +457,37 @@ public class AreaService {
     {
         ObjectMapper mapper = new ObjectMapper();
         return GeoJsonParser.fromGeoJson(mapper.writeValueAsString(geojson));
+    }
+
+    private AreaDto toDto(Area area)
+    {
+        AreaDto dto = new AreaDto();
+
+        dto.setId(area.getId());
+        dto.setNome(area.getNome());
+        dto.setEstado(area.getEstado());
+        dto.setCidade(area.getCidade());
+    
+        List<TalhaoDto> talhaoDtos = area.getTalhoes().stream()
+                                         .map(this::toDto)
+                                         .collect(Collectors.toList());
+        dto.setTalhoes(talhaoDtos);
+    
+        return dto;
+    }
+
+    private TalhaoDto toDto(Talhao talhao)
+    {
+        TalhaoDto dto = new TalhaoDto();
+
+        dto.setId(talhao.getId());
+        dto.setMnTl(talhao.getMnTl());
+        dto.setAreaHaTl(talhao.getAreaHaTl());
+        dto.setSolo(talhao.getSolo());
+        dto.setCultura(talhao.getCultura());
+        dto.setSafra(talhao.getSafra());
+        dto.setProdutividadePorAno(talhao.getProdutividadePorAno());
+
+        return dto;
     }
 }

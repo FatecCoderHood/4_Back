@@ -100,9 +100,9 @@ public class AreaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Area>> getAllAreas() {
+    public ResponseEntity<List<AreaDto>> getAllAreas() {
         log.info("Recebida requisição GET para todas as áreas");
-        List<Area> areas = areaService.findAllAreas();
+        List<AreaDto> areas = areaService.findAllAreas();
         log.debug("Número de áreas encontradas: {}", areas.size());
         return ResponseEntity.ok(areas);
     }
