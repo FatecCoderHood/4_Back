@@ -26,7 +26,7 @@ public class AreaService {
         area.setNome(areaDTO.getNome());
         area.setEstado(areaDTO.getEstado());
         area.setCidade(areaDTO.getCidade());
-        area.setStatus(areaDTO.getStatus() != null ? areaDTO.getStatus() : StatusArea.EM_ANALISE);
+        area.setStatus(areaDTO.getStatus() != null ? areaDTO.getStatus() : StatusArea.EM_ABERTO);
         log.debug("Área criada (ainda não salva): {}", area);
         Area savedArea = areaRepository.save(area);
         log.info("Área salva com ID: {}", savedArea.getId());
@@ -41,7 +41,7 @@ public class AreaService {
         area.setNome(areaDTO.getNome());
         area.setEstado(areaDTO.getEstado());
         area.setCidade(areaDTO.getCidade());
-        area.setStatus(StatusArea.EM_ANALISE);
+        area.setStatus(StatusArea.EM_ABERTO);
 
         if (areaDTO.getGeojson() != null) {
             log.info("Processando GeoJSON principal");
@@ -100,6 +100,7 @@ public class AreaService {
                 talhao.setSolo(getStringProperty(properties, "SOLO", "solo"));
                 talhao.setCultura(getStringProperty(properties, "CULTURA", "cultura"));
                 talhao.setSafra(getStringProperty(properties, "SAFRA", "safra"));
+                talhao.setStatus(StatusArea.EM_ABERTO);
 
                 Double produtividade = getDoubleProperty(properties, "PRODUTIVIDADE", "produtividadePorAno");
                 talhao.setProdutividadePorAno(produtividade != null ? produtividade : 0.0);
@@ -218,6 +219,7 @@ public class AreaService {
             });
         }
 
+        area.atualizarStatusArea();
         log.info("Salvando área atualizada");
         Area updatedArea = areaRepository.save(area);
         log.info("Área ID {} atualizada com sucesso", id);
@@ -290,12 +292,14 @@ public class AreaService {
         talhao.setSafra(talhaoDto.getSafra());
         talhao.setProdutividadePorAno(talhaoDto.getProdutividadePorAno());
         talhao.setGeojson(talhaoDto.getGeojson());
+        talhao.setStatus(talhaoDto.getStatus() != null ? talhaoDto.getStatus() : StatusArea.EM_ABERTO);
 
         if (talhaoDto.getErvasDaninhas() != null) {
             log.debug("Atualizando ervas daninhas: {}", talhaoDto.getErvasDaninhas());
             talhao.setErvasDaninhas(talhaoDto.getErvasDaninhas());
         }
 
+        area.atualizarStatusArea();
         log.info("Salvando talhão atualizado");
         Area updatedArea = areaRepository.save(area);
 
@@ -321,6 +325,7 @@ public class AreaService {
             throw new MessageException("Talhão não encontrado");
         }
 
+        area.atualizarStatusArea();
         log.info("Talhão removido - salvando área");
         areaRepository.save(area);
         log.info("Talhão ID {} deletado com sucesso", talhaoId);
@@ -363,6 +368,7 @@ public class AreaService {
         talhao.setSafra(talhaoDto.getSafra());
         talhao.setProdutividadePorAno(talhaoDto.getProdutividadePorAno());
         talhao.setGeojson(talhaoDto.getGeojson());
+        talhao.setStatus(talhaoDto.getStatus() != null ? talhaoDto.getStatus() : StatusArea.EM_ABERTO);
 
         if (talhaoDto.getErvasDaninhas() != null) {
             log.debug("Adicionando ervas daninhas: {}", talhaoDto.getErvasDaninhas());
@@ -370,7 +376,6 @@ public class AreaService {
         }
 
         area.addTalhao(talhao);
-
         Area savedArea = areaRepository.save(area);
 
         Talhao savedTalhao = savedArea.getTalhoes().stream()
@@ -449,6 +454,7 @@ public class AreaService {
         areaRepository.save(area);
         log.info("Ervas daninhas adicionadas com sucesso ao talhão {}", talhao.getMnTl());
     }
+
     @SuppressWarnings("unchecked")
     private List<String> extrairErvasDaninhasDeGeoJson(Map<String, Object> geojson, Integer mnTl) {
         List<String> ervas = new ArrayList<>();
@@ -459,13 +465,14 @@ public class AreaService {
             for (Map<String, Object> feature : features) {
                 Map<String, Object> properties = (Map<String, Object>) feature.get("properties");
 
-                if (properties == null) continue;
+                if (properties == null)
+                    continue;
 
                 Integer nmTl = getIntegerProperty(properties, "NM_TL", "nmTl");
                 String classe = getStringProperty(properties, "CLASSE", "classe");
 
                 if (Objects.equals(nmTl, mnTl) && "DANINHA".equalsIgnoreCase(classe)) {
-                    ervas.add(feature.toString()); // armazena a feature completa como string
+                    ervas.add(feature.toString());
                 }
             }
 
@@ -476,6 +483,7 @@ public class AreaService {
 
         return ervas;
     }
+
     public void removerErvasDaninhas(Long areaId, Long talhaoId) {
         log.info("Removendo ervas daninhas do talhão ID {} da área ID {}", talhaoId, areaId);
         Area area = getAreaOrThrow(areaId);
@@ -488,5 +496,37 @@ public class AreaService {
         talhao.getErvasDaninhas().clear();
         areaRepository.save(area);
         log.info("Todas as ervas daninhas removidas do talhão {}", talhao.getMnTl());
+    }
+
+    public void updateTalhaoStatus(Long areaId, Long talhaoId, StatusArea status) {
+        log.info("Atualizando status do talhão ID {} para {}", talhaoId, status);
+        Area area = getAreaOrThrow(areaId);
+
+        Talhao talhao = area.getTalhoes().stream()
+                .filter(t -> t.getId().equals(talhaoId))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.error("Talhão ID {} não encontrado na área ID {}", talhaoId, areaId);
+                    return new MessageException("Talhão não encontrado");
+                });
+
+        talhao.setStatus(status);
+        area.atualizarStatusArea();
+        areaRepository.save(area);
+        log.info("Status do talhão ID {} atualizado para {}", talhaoId, status);
+    }
+
+    public StatusArea getTalhaoStatus(Long areaId, Long talhaoId) {
+        log.info("Obtendo status do talhão ID {} da área ID {}", talhaoId, areaId);
+        Area area = getAreaOrThrow(areaId);
+
+        return area.getTalhoes().stream()
+                .filter(t -> t.getId().equals(talhaoId))
+                .findFirst()
+                .map(Talhao::getStatus)
+                .orElseThrow(() -> {
+                    log.error("Talhão ID {} não encontrado na área ID {}", talhaoId, areaId);
+                    return new MessageException("Talhão não encontrado");
+                });
     }
 }
