@@ -476,4 +476,17 @@ public class AreaService {
 
         return ervas;
     }
+    public void removerErvasDaninhas(Long areaId, Long talhaoId) {
+        log.info("Removendo ervas daninhas do talhão ID {} da área ID {}", talhaoId, areaId);
+        Area area = getAreaOrThrow(areaId);
+
+        Talhao talhao = area.getTalhoes().stream()
+                .filter(t -> t.getId().equals(talhaoId))
+                .findFirst()
+                .orElseThrow(() -> new MessageException("Talhão não encontrado"));
+
+        talhao.getErvasDaninhas().clear();
+        areaRepository.save(area);
+        log.info("Todas as ervas daninhas removidas do talhão {}", talhao.getMnTl());
+    }
 }

@@ -170,4 +170,19 @@ public class AreaController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @DeleteMapping("/{areaId}/talhoes/{talhaoId}/ervas")
+    @Operation(summary = "Remove todas as ervas daninhas do talhão indicado")
+    public ResponseEntity<?> removerErvasDaninhas(
+            @PathVariable Long areaId,
+            @PathVariable Long talhaoId) {
+
+        try {
+            areaService.removerErvasDaninhas(areaId, talhaoId);
+            return ResponseEntity.ok("Ervas daninhas removidas com sucesso.");
+        } catch (Exception e) {
+            log.error("Erro ao remover ervas daninhas", e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
