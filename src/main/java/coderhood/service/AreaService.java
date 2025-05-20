@@ -5,11 +5,14 @@ import coderhood.exception.MessageException;
 import coderhood.model.Area;
 import coderhood.model.StatusArea;
 import coderhood.model.Talhao;
+import coderhood.model.TalhaoHistorico;
 import coderhood.repository.AreaRepository;
+import coderhood.repository.TalhaoHistoricoRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -19,6 +22,9 @@ public class AreaService {
 
     @Autowired
     private AreaRepository areaRepository;
+
+    @Autowired
+    private TalhaoHistoricoRepository talhaoHistoricoRepository;
 
     public Area createArea(AreaDto areaDTO) {
         log.info("Criando nova área básica");
@@ -283,6 +289,21 @@ public class AreaService {
                     return new MessageException("Talhão não encontrado");
                 });
 
+        registrarAlteracao(talhao, "mnTl", String.valueOf(talhao.getMnTl()), String.valueOf(talhaoDto.getMnTl()));
+        registrarAlteracao(talhao, "areaHaTl", String.valueOf(talhao.getAreaHaTl()), String.valueOf(talhaoDto.getAreaHaTl()));
+        registrarAlteracao(talhao, "solo", talhao.getSolo(), talhaoDto.getSolo());
+        registrarAlteracao(talhao, "cultura", talhao.getCultura(), talhaoDto.getCultura());
+        registrarAlteracao(talhao, "safra", talhao.getSafra(), talhaoDto.getSafra());
+        registrarAlteracao(talhao, "produtividadePorAno", String.valueOf(talhao.getProdutividadePorAno()), String.valueOf(talhaoDto.getProdutividadePorAno()));
+        registrarAlteracao(talhao, "geojson", talhao.getGeojson(), talhaoDto.getGeojson());
+
+        if (talhaoDto.getErvasDaninhas() != null) {
+            String anterior = talhao.getErvasDaninhas() != null ? talhao.getErvasDaninhas().toString() : "";
+            String novo = talhaoDto.getErvasDaninhas().toString();
+            registrarAlteracao(talhao, "ervasDaninhas", anterior, novo);
+            talhao.setErvasDaninhas(talhaoDto.getErvasDaninhas());
+        }
+
         talhao.setMnTl(talhaoDto.getMnTl());
         talhao.setAreaHaTl(talhaoDto.getAreaHaTl());
         talhao.setSolo(talhaoDto.getSolo());
@@ -290,11 +311,6 @@ public class AreaService {
         talhao.setSafra(talhaoDto.getSafra());
         talhao.setProdutividadePorAno(talhaoDto.getProdutividadePorAno());
         talhao.setGeojson(talhaoDto.getGeojson());
-
-        if (talhaoDto.getErvasDaninhas() != null) {
-            log.debug("Atualizando ervas daninhas: {}", talhaoDto.getErvasDaninhas());
-            talhao.setErvasDaninhas(talhaoDto.getErvasDaninhas());
-        }
 
         log.info("Salvando talhão atualizado");
         Area updatedArea = areaRepository.save(area);
@@ -310,6 +326,7 @@ public class AreaService {
         log.debug("Talhão atualizado com sucesso: {}", updatedTalhao);
         return updatedTalhao;
     }
+
 
     public void deleteTalhao(Long areaId, Long talhaoId) {
         log.info("Deletando talhão ID {} da área ID {}", talhaoId, areaId);
@@ -488,5 +505,18 @@ public class AreaService {
         talhao.getErvasDaninhas().clear();
         areaRepository.save(area);
         log.info("Todas as ervas daninhas removidas do talhão {}", talhao.getMnTl());
+    }
+
+    private void registrarAlteracao(Talhao talhao, String campo, String anterior, String novo) {
+        if ((anterior == null && novo != null) || (anterior != null && !anterior.equals(novo))) {
+            TalhaoHistorico historico = new TalhaoHistorico();
+            historico.setDataAlteracao(LocalDateTime.now());
+            historico.setCampoAlterado(campo);
+            historico.setValorAnterior(anterior);
+            historico.setValorNovo(novo);
+            historico.setTalhao(talhao);
+
+            talhao.getHistorico().add(historico);
+        }
     }
 }
