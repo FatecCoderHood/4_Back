@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.locationtech.jts.geom.Geometry;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
@@ -29,6 +30,10 @@ public class Talhao {
     private String solo;
     private String cultura;
     private String safra;
+
+    @Column(columnDefinition = "SDO_GEOMETRY")
+    private Geometry geometry;
+
     private Double produtividadePorAno;
 
     @ManyToOne(fetch = FetchType.LAZY)
