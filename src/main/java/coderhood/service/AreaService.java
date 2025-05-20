@@ -429,4 +429,51 @@ public class AreaService {
         }
         return value.toString();
     }
+
+    public void adicionarErvasDaninhas(Long areaId, Long talhaoId, Map<String, Object> geojsonErvas) {
+        log.info("Adicionando ervas daninhas ao talhão ID {} da área ID {}", talhaoId, areaId);
+        Area area = getAreaOrThrow(areaId);
+
+        Talhao talhao = area.getTalhoes().stream()
+                .filter(t -> t.getId().equals(talhaoId))
+                .findFirst()
+                .orElseThrow(() -> new MessageException("Talhão não encontrado"));
+
+        List<String> ervasExtraidas = extrairErvasDaninhasDeGeoJson(geojsonErvas, talhao.getMnTl());
+
+        if (ervasExtraidas.isEmpty()) {
+            log.warn("Nenhuma erva daninha do talhão {} encontrada no GeoJSON", talhao.getMnTl());
+        }
+
+        talhao.getErvasDaninhas().addAll(ervasExtraidas);
+        areaRepository.save(area);
+        log.info("Ervas daninhas adicionadas com sucesso ao talhão {}", talhao.getMnTl());
+    }
+    @SuppressWarnings("unchecked")
+    private List<String> extrairErvasDaninhasDeGeoJson(Map<String, Object> geojson, Integer mnTl) {
+        List<String> ervas = new ArrayList<>();
+
+        try {
+            List<Map<String, Object>> features = (List<Map<String, Object>>) geojson.get("features");
+
+            for (Map<String, Object> feature : features) {
+                Map<String, Object> properties = (Map<String, Object>) feature.get("properties");
+
+                if (properties == null) continue;
+
+                Integer nmTl = getIntegerProperty(properties, "NM_TL", "nmTl");
+                String classe = getStringProperty(properties, "CLASSE", "classe");
+
+                if (Objects.equals(nmTl, mnTl) && "DANINHA".equalsIgnoreCase(classe)) {
+                    ervas.add(feature.toString()); // armazena a feature completa como string
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Erro ao extrair ervas daninhas do GeoJSON", e);
+            throw new MessageException("Erro ao extrair ervas daninhas do GeoJSON: " + e.getMessage());
+        }
+
+        return ervas;
+    }
 }
