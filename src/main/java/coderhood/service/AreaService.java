@@ -481,12 +481,14 @@ public class AreaService {
         TalhaoDto dto = new TalhaoDto();
 
         dto.setId(talhao.getId());
+        dto.setGeojson(talhao.getGeojson());
         dto.setMnTl(talhao.getMnTl());
         dto.setAreaHaTl(talhao.getAreaHaTl());
         dto.setSolo(talhao.getSolo());
         dto.setCultura(talhao.getCultura());
         dto.setSafra(talhao.getSafra());
         dto.setProdutividadePorAno(talhao.getProdutividadePorAno());
+        dto.setErvasDaninhas(talhao.getErvasDaninhas());
 
         return dto;
     }
