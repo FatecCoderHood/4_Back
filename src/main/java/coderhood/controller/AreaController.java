@@ -25,41 +25,49 @@ public class AreaController {
 
     @PostMapping
     @Operation(summary = "Cria uma nova área com ou sem GeoJSON")
-    public ResponseEntity<?> createArea(@RequestBody AreaGeoJsonDto areaDTO) {
+    public ResponseEntity<?> createArea(@RequestBody AreaDto areaDto)
+    {
         log.info("Recebida requisição POST para criar nova área");
-        try {
+        
+        try
+        {
             log.debug("Validando DTO recebido");
-            if (areaDTO.getNome() == null || areaDTO.getNome().isEmpty()) {
+
+            if (areaDto.getNome() == null || areaDto.getNome().isEmpty())
+            {
                 throw new MessageException("Nome da área é obrigatório");
             }
 
             log.debug("Conteúdo do DTO recebido:");
-            log.debug("Nome: {}", areaDTO.getNome());
-            log.debug("Cidade: {}", areaDTO.getCidade());
-            log.debug("Estado: {}", areaDTO.getEstado());
-            log.debug("Tem GeoJSON principal: {}", areaDTO.getGeojson() != null);
-            log.debug("Tem GeoJSON ervas daninhas: {}", areaDTO.getErvasDaninhasGeojson() != null);
-            log.debug("Tem produtividade: {}", areaDTO.getProdutividadePorAno() != null);
+            log.debug("Nome: {}", areaDto.getNome());
+            log.debug("Cidade: {}", areaDto.getCidade());
+            log.debug("Estado: {}", areaDto.getEstado());
+            log.debug("Tem GeoJSON principal: {}", areaDto.getGeojson() != null);
+            log.debug("Tem GeoJSON ervas daninhas: {}", areaDto.getErvasDaninhasGeojson() != null);
+            log.debug("Tem produtividade: {}", areaDto.getProdutividadePorAno() != null);
 
-            if (areaDTO.getProdutividadePorAno() != null) {
-                areaDTO.getProdutividadePorAno()
+            if (areaDto.getProdutividadePorAno() != null)
+            {
+                areaDto.getProdutividadePorAno()
                         .forEach((mnTl, prod) -> log.debug("Produtividade para talhão {}: {}", mnTl, prod));
             }
 
-            Area area = areaService.createAreaWithGeoJson(areaDTO);
+            Area area = areaService.createArea(areaDto);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(area);
-        } catch (MessageException e) {
+        } catch (MessageException e)
+        {
             log.error("Erro de validação: {}", e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
+        } catch (Exception e)
+        {
             log.error("Erro interno ao criar área", e);
             return ResponseEntity.internalServerError().body("Erro interno ao processar requisição");
         }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateArea(@PathVariable Long id, @RequestBody AreaGeoJsonDto areaDto) {
+    public ResponseEntity<?> updateArea(@PathVariable Long id, @RequestBody AreaDto areaDto) {
         try {
             log.debug("Validando dados de atualização");
             if (areaDto.getNome() == null || areaDto.getNome().isEmpty()) {

@@ -1,15 +1,24 @@
 package coderhood.service;
 
 import coderhood.dto.*;
+import coderhood.dto.spatial.FeatureCollectionDto;
+import coderhood.dto.spatial.FeatureDto;
+import coderhood.exception.GeoJsonParsingException;
 import coderhood.exception.MessageException;
 import coderhood.model.Area;
 import coderhood.model.StatusArea;
 import coderhood.model.Talhao;
 import coderhood.repository.AreaRepository;
+import coderhood.utils.GeoJsonParser;
+import coderhood.utils.GeometryMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -20,58 +29,55 @@ public class AreaService {
     @Autowired
     private AreaRepository areaRepository;
 
-    public Area createArea(AreaDto areaDTO) {
-        log.info("Criando nova área básica");
-        Area area = new Area();
-        area.setNome(areaDTO.getNome());
-        area.setEstado(areaDTO.getEstado());
-        area.setCidade(areaDTO.getCidade());
-        area.setStatus(areaDTO.getStatus() != null ? areaDTO.getStatus() : StatusArea.EM_ANALISE);
-        log.debug("Área criada (ainda não salva): {}", area);
-        Area savedArea = areaRepository.save(area);
-        log.info("Área salva com ID: {}", savedArea.getId());
-        return savedArea;
-    }
-
-    public Area createAreaWithGeoJson(AreaGeoJsonDto areaDTO) {
-        log.info("Iniciando criação de área com GeoJSON");
-        log.debug("DTO recebido: {}", areaDTO);
+    public Area createArea(AreaDto areaDto) throws IOException, GeoJsonParsingException
+    {
+        log.info("Iniciando criação de área");
+        log.debug("DTO recebido: {}", areaDto);
 
         Area area = new Area();
-        area.setNome(areaDTO.getNome());
-        area.setEstado(areaDTO.getEstado());
-        area.setCidade(areaDTO.getCidade());
+        area.setNome(areaDto.getNome());
+        area.setEstado(areaDto.getEstado());
+        area.setCidade(areaDto.getCidade());
         area.setStatus(StatusArea.EM_ANALISE);
 
-        if (areaDTO.getGeojson() != null) {
+        if (areaDto.getGeojson() != null && !areaDto.getGeojson().isEmpty())
+        {
             log.info("Processando GeoJSON principal");
-            List<Talhao> talhoes = processarGeoJson(areaDTO.getGeojson());
+
+            List<Talhao> talhoes = processarGeoJson(areaDto.getGeojson());
             talhoes.forEach(area::addTalhao);
             log.info("{} talhões adicionados", talhoes.size());
         }
 
-        if (areaDTO.getErvasDaninhasGeojson() != null) {
+        if (areaDto.getErvasDaninhasGeojson() != null)
+        {
             log.info("Processando GeoJSON de ervas daninhas");
-            processarErvasDaninhasGeoJson(area, areaDTO.getErvasDaninhasGeojson());
-        } else {
+            processarErvasDaninhasGeoJson(area, areaDto.getErvasDaninhasGeojson());
+        } else
+        {
             log.warn("Nenhum GeoJSON de ervas daninhas fornecido");
         }
 
-        if (areaDTO.getProdutividadePorAno() != null) {
+        if (areaDto.getProdutividadePorAno() != null)
+        {
             log.info("Processando produtividade por ano");
-            areaDTO.getProdutividadePorAno().forEach((mnTl, produtividade) -> {
+            areaDto.getProdutividadePorAno().forEach((mnTl, produtividade) ->
+            {
                 area.getTalhoes().stream()
-                        .filter(t -> mnTl.equals(t.getMnTl().toString()))
-                        .findFirst()
-                        .ifPresent(t -> {
-                            log.debug("Definindo produtividade {} para talhão {}", produtividade, mnTl);
-                            t.setProdutividadePorAno(produtividade);
-                        });
+                    .filter(t -> mnTl.equals(t.getMnTl().toString()))
+                    .findFirst()
+                    .ifPresent(t ->
+                    {
+                        log.debug("Definindo produtividade {} para talhão {}", produtividade, mnTl);
+                        t.setProdutividadePorAno(produtividade);
+                    });
             });
         }
 
         log.info("Salvando área no banco de dados");
+        
         Area savedArea = areaRepository.save(area);
+
         log.info("Área criada com ID: {}", savedArea.getId());
         log.debug("Área salva: {}", savedArea);
 
@@ -79,20 +85,30 @@ public class AreaService {
     }
 
     @SuppressWarnings("unchecked")
-    private List<Talhao> processarGeoJson(Map<String, Object> geojson) {
-        log.info("Processando GeoJSON principal");
-        try {
-            if (!(geojson.get("features") instanceof List)) {
-                throw new MessageException("Formato GeoJSON inválido - 'features' deve ser uma lista");
-            }
+    private List<Talhao> processarGeoJson(Map<String, Object> geojson) throws JsonProcessingException, GeoJsonParsingException
+    {
+        FeatureCollectionDto featureCollectionDto = geojsonToFeatureCollectionDto(geojson);
 
-            List<Map<String, Object>> features = (List<Map<String, Object>>) geojson.get("features");
+        log.info("Processando GeoJSON principal");
+        try
+        {
+            List<FeatureDto> features = featureCollectionDto.getFeatures();
             log.debug("Número de features encontradas: {}", features.size());
 
-            return features.stream().map(feature -> {
-                Map<String, Object> properties = (Map<String, Object>) feature.getOrDefault("properties",
-                        new HashMap<>());
+            if (features == null || features.isEmpty())
+            {
+                throw new MessageException("Invalid GeoJSON format - 'features' prop not found for featureCollection");
+            }
+
+            return features.stream().map(feature ->
+            {
+                Map<String, Object> properties = feature.getProperties();
                 log.debug("Processando feature com properties: {}", properties);
+
+                if (properties == null || properties.isEmpty())
+                {
+                    throw new MessageException("Invalid GeoJSON format - 'properties' prop not found for feature");
+                }
 
                 Talhao talhao = new Talhao();
                 talhao.setMnTl(getIntegerProperty(properties, "MN_TL", "mnTl"));
@@ -105,14 +121,19 @@ public class AreaService {
                 talhao.setProdutividadePorAno(produtividade != null ? produtividade : 0.0);
                 log.debug("Produtividade definida para: {}", talhao.getProdutividadePorAno());
 
-                talhao.setGeojson(feature.toString());
+                talhao.setGeojson(geojson.toString());
+                talhao.setGeometry(GeometryMapper.fromDto(feature.getGeometry()));
+                log.info("RTX was here - AreaService::processarGeoSjon {}", talhao.getGeometry().toText());
                 log.debug("Talhão criado: {}", talhao);
+
                 return talhao;
             }).collect(Collectors.toList());
-        } catch (ClassCastException e) {
+        } catch (ClassCastException e)
+        {
             log.error("Erro de tipo no GeoJSON", e);
             throw new MessageException("Erro de tipo no GeoJSON: " + e.getMessage());
-        } catch (Exception e) {
+        } catch (Exception e)
+        {
             log.error("Erro ao processar GeoJSON", e);
             throw new MessageException("Erro ao processar GeoJSON: " + e.getMessage());
         }
@@ -183,7 +204,8 @@ public class AreaService {
         log.info("Processamento de ervas daninhas concluído");
     }
 
-    public Area updateAreaWithGeoJson(Long id, AreaGeoJsonDto areaDto) {
+    public Area updateAreaWithGeoJson(Long id, AreaDto areaDto) throws JsonProcessingException, GeoJsonParsingException
+    {
         log.info("Atualizando área com ID {} com GeoJSON", id);
         Area area = getAreaOrThrow(id);
         log.debug("Área encontrada para atualização: {}", area);
@@ -428,5 +450,11 @@ public class AreaService {
             return null;
         }
         return value.toString();
+    }
+
+    private FeatureCollectionDto geojsonToFeatureCollectionDto(Map<String, Object> geojson) throws GeoJsonParsingException, JsonProcessingException
+    {
+        ObjectMapper mapper = new ObjectMapper();
+        return GeoJsonParser.fromGeoJson(mapper.writeValueAsString(geojson));
     }
 }
