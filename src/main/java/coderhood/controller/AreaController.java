@@ -154,4 +154,20 @@ public class AreaController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @PutMapping("/{areaId}/talhoes/{talhaoId}/ervas")
+    @Operation(summary = "Insere ervas daninhas no talhão indicado (via GeoJSON)")
+    public ResponseEntity<?> adicionarErvasDaninhas(
+            @PathVariable Long areaId,
+            @PathVariable Long talhaoId,
+            @RequestBody Map<String, Object> geojsonErvas) {
+
+        try {
+            areaService.adicionarErvasDaninhas(areaId, talhaoId, geojsonErvas);
+            return ResponseEntity.ok("Ervas daninhas adicionadas com sucesso.");
+        } catch (Exception e) {
+            log.error("Erro ao adicionar ervas daninhas", e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
