@@ -1,7 +1,7 @@
 package coderhood.dto;
 
 import java.util.List;
-
+import coderhood.model.StatusArea;
 import lombok.*;
 
 @Getter
@@ -9,7 +9,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TalhaoDto {
-    private Long id; // Alterado de UUID para Long
+    private Long id;
     private String geojson;
     private Integer mnTl;
     private Double areaHaTl;
@@ -17,5 +17,6 @@ public class TalhaoDto {
     private String cultura;
     private String safra;
     private Double produtividadePorAno;
+    private StatusArea status;
     private List<String> ervasDaninhas;
 }
