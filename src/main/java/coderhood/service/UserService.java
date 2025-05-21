@@ -4,6 +4,7 @@ import coderhood.dto.*;
 import coderhood.exception.ResourceNotFoundException;
 import coderhood.exception.BusinessRuleException;
 import coderhood.model.User;
+import coderhood.model.User.TipoAcesso;
 import coderhood.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
