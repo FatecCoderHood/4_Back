@@ -15,4 +15,9 @@ public class GeometryDataDto
 
     @JsonProperty("coordinates")
     private Object coordinates; // can be List or nested List depending on the geometry
+
+    public String toString()
+    {
+        return String.format("geometry={type=%s, coordinates=%s}", type, coordinates.toString());
+    }
 }

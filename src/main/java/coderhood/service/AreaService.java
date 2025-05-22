@@ -111,7 +111,7 @@ public class AreaService {
                 talhao.setProdutividadePorAno(produtividade != null ? produtividade : 0.0);
                 log.debug("Produtividade definida para: {}", talhao.getProdutividadePorAno());
 
-                talhao.setGeojson(feature.getGeometry().getCoordinates().toString());
+                talhao.setGeojson(feature.toString());
                 talhao.setGeometry(GeometryMapper.fromDto(feature.getGeometry()));
                 log.info("RTX was here - AreaService::processarGeoSjon {}", talhao.getGeometry().toText());
                 log.debug("Talhão criado: {}", talhao);
