@@ -29,6 +29,9 @@ public class Area {
     @Column(length = 255)
     private String cidade;
 
+    @Column(name = "tiff_s3_key", length = 512)
+    private String tiffS3Key; // Armazena a chave S3 do arquivo TIFF
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private StatusArea status = StatusArea.EM_ABERTO;
@@ -36,6 +39,14 @@ public class Area {
     @OneToMany(mappedBy = "area", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Talhao> talhoes = new ArrayList<>();
+
+    public String getTiffUrl() {
+        return tiffS3Key != null ? "https://" + "seu-bucket-s3" + ".s3.amazonaws.com/" + tiffS3Key : null;
+    }
+
+    public void setTiffFile(String s3Key) {
+        this.tiffS3Key = s3Key;
+    }
 
     public void addTalhao(Talhao talhao) {
         talhoes.add(talhao);

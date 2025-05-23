@@ -9,6 +9,7 @@ import coderhood.repository.AreaRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -19,6 +20,9 @@ public class AreaService {
 
     @Autowired
     private AreaRepository areaRepository;
+
+    @Autowired
+    private AwsS3UploadService awsS3UploadService;
 
     public Area createArea(AreaDto areaDTO) {
         log.info("Criando nova área básica");
@@ -528,5 +532,26 @@ public class AreaService {
                     log.error("Talhão ID {} não encontrado na área ID {}", talhaoId, areaId);
                     return new MessageException("Talhão não encontrado");
                 });
+    }
+
+    public Area createAreaWithGeoJsonAndTiff(AreaGeoJsonDto areaDTO, MultipartFile tiffFile) {
+        log.info("Iniciando criação de área com GeoJSON e TIFF");
+
+        Area area = createAreaWithGeoJson(areaDTO); // Usa o método existente
+
+        if (tiffFile != null && !tiffFile.isEmpty()) {
+            try {
+                String s3Key = "areas/" + area.getId() + "/" + tiffFile.getOriginalFilename();
+                awsS3UploadService.uploadTiff(tiffFile, s3Key);
+                area.setTiffFile(s3Key);
+                areaRepository.save(area);
+                log.info("TIFF enviado para S3 com chave: {}", s3Key);
+            } catch (Exception e) {
+                log.error("Erro ao enviar TIFF para S3", e);
+                throw new MessageException("Erro ao enviar arquivo TIFF");
+            }
+        }
+
+        return area;
     }
 }

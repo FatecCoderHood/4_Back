@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
 
 import java.util.List;
 import java.util.Map;
@@ -183,6 +185,25 @@ public class AreaController {
         } catch (Exception e) {
             log.error("Erro ao remover ervas daninhas", e);
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Cria uma nova área com ou sem GeoJSON e TIFF")
+    public ResponseEntity<?> createArea(
+            @RequestPart("area") AreaGeoJsonDto areaDTO,
+            @RequestPart(value = "tiffFile", required = false) MultipartFile tiffFile) {
+
+        log.info("Recebida requisição POST para criar nova área com TIFF");
+        try {
+            Area area = areaService.createAreaWithGeoJsonAndTiff(areaDTO, tiffFile);
+            return ResponseEntity.status(HttpStatus.CREATED).body(area);
+        } catch (MessageException e) {
+            log.error("Erro de validação: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            log.error("Erro interno ao criar área", e);
+            return ResponseEntity.internalServerError().body("Erro interno ao processar requisição");
         }
     }
 }

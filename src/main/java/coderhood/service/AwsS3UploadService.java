@@ -7,7 +7,10 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AwsS3UploadService {
@@ -19,14 +22,9 @@ public class AwsS3UploadService {
 
     public String uploadTiff(MultipartFile file, String fileName) {
         try {
-            System.out.println("== RECEBENDO UPLOAD DE TIFF (AWS) ==");
-            System.out.println("Original file name: " + file.getOriginalFilename());
-            System.out.println("Custom file name (param): " + fileName);
-            System.out.println("File size: " + file.getSize() + " bytes");
-
             String finalFileName = (fileName == null || fileName.isBlank())
-                    ? file.getOriginalFilename()
-                    : fileName;
+                    ? "tiffs/" + UUID.randomUUID() + "_" + file.getOriginalFilename()
+                    : "tiffs/" + fileName;
 
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
@@ -34,12 +32,14 @@ public class AwsS3UploadService {
                     .contentType("image/tiff")
                     .build();
 
-            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+            s3Client.putObject(putObjectRequest,
+                    RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
 
-            return "Upload realizado com sucesso para AWS S3: " + finalFileName;
+            log.info("Arquivo TIFF enviado com sucesso para: {}", finalFileName);
+            return finalFileName;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Erro ao fazer upload do TIFF", e);
             throw new RuntimeException("Erro ao fazer upload do arquivo .tif na AWS S3", e);
         }
     }
