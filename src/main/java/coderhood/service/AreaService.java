@@ -458,6 +458,7 @@ public class AreaService {
         dto.setNome(area.getNome());
         dto.setEstado(area.getEstado());
         dto.setCidade(area.getCidade());
+        dto.setStatus(area.getStatus());
 
         List<TalhaoDto> talhaoDtos = area.getTalhoes().stream()
                 .map(this::toDto)
@@ -479,6 +480,7 @@ public class AreaService {
         dto.setSafra(talhao.getSafra());
         dto.setProdutividadePorAno(talhao.getProdutividadePorAno());
         dto.setErvasDaninhas(talhao.getErvasDaninhas());
+        dto.setStatus(talhao.getStatus());
 
         return dto;
     }

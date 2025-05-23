@@ -17,7 +17,7 @@ public class AreaDto {
     private String nome;
     private String estado;
     private String cidade;
-    private StatusArea status;
+    private StatusArea status = StatusArea.EM_ABERTO;
     private List<TalhaoDto> talhoes;
     private Map<String, Object> geojson;
     private Map<String, Object> ervasDaninhasGeojson; // Nome corrigido para manter consistência
