@@ -17,6 +17,6 @@ public class TalhaoDto {
     private String cultura;
     private String safra;
     private Double produtividadePorAno;
-    private StatusArea status;
+    private StatusArea status = StatusArea.EM_ABERTO;
     private List<String> ervasDaninhas;
 }
