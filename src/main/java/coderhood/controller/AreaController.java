@@ -1,6 +1,7 @@
 package coderhood.controller;
 
 import coderhood.dto.*;
+import coderhood.dto.area.AreaBasicDto;
 import coderhood.dto.area.AreaDto;
 import coderhood.exception.MessageException;
 import coderhood.model.Area;
@@ -95,9 +96,9 @@ public class AreaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<AreaDto>> getAllAreas() {
+    public ResponseEntity<List<AreaBasicDto>> getAllAreas() {
         log.info("Recebida requisição GET para todas as áreas");
-        List<AreaDto> areas = areaService.findAllAreas();
+        List<AreaBasicDto> areas = areaService.findAllAreas();
         log.debug("Número de áreas encontradas: {}", areas.size());
         return ResponseEntity.ok(areas);
     }
