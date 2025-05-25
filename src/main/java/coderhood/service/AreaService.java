@@ -550,8 +550,8 @@ public class AreaService {
         log.info("Todas as ervas daninhas removidas do talhão {}", talhao.getMnTl());
     }
 
-    public void updateTalhaoStatus(Long areaId, Long talhaoId, StatusArea status) {
-        log.info("Atualizando status do talhão ID {} para {}", talhaoId, status);
+    public void updateTalhaoStatus(Long areaId, Long talhaoId, StatusArea status, Long usuarioId) {
+        log.info("Atualizando status do talhão ID {} para {} pelo usuário ID {}", talhaoId, status, usuarioId);
         Area area = getAreaOrThrow(areaId);
 
         Talhao talhao = area.getTalhoes().stream()
@@ -563,9 +563,13 @@ public class AreaService {
                 });
 
         talhao.setStatus(status);
+        talhao.setUsuarioAprovacaoId(usuarioId);
+        talhao.setDataAprovacao(java.time.LocalDateTime.now());
+        
         area.atualizarStatusArea();
         areaRepository.save(area);
-        log.info("Status do talhão ID {} atualizado para {}", talhaoId, status);
+        log.info("Status do talhão ID {} atualizado para {} pelo usuário ID {} em {}", 
+                talhaoId, status, usuarioId, talhao.getDataAprovacao());
     }
 
     public StatusArea getTalhaoStatus(Long areaId, Long talhaoId) {
@@ -580,6 +584,169 @@ public class AreaService {
                     log.error("Talhão ID {} não encontrado na área ID {}", talhaoId, areaId);
                     return new MessageException("Talhão não encontrado");
                 });
+    }
+
+    /**
+     * Obter estatísticas dos usuários que mais aprovaram/modificaram status de talhões
+     * 
+     * @return Map com estatísticas dos usuários
+     */
+    public Map<String, Object> obterEstatisticasUsuarios() {
+        log.info("Obtendo estatísticas de usuários para relatórios KPI");
+        
+        List<Area> todasAreas = areaRepository.findAll();
+        Map<Long, Integer> aprovacoesPorUsuario = new HashMap<>();
+        Map<Long, List<String>> statusPorUsuario = new HashMap<>();
+        
+        // Processar todos os talhões para contar aprovações por usuário
+        for (Area area : todasAreas) {
+            for (Talhao talhao : area.getTalhoes()) {
+                if (talhao.getUsuarioAprovacaoId() != null) {
+                    Long usuarioId = talhao.getUsuarioAprovacaoId();
+                    
+                    // Contar aprovações
+                    aprovacoesPorUsuario.merge(usuarioId, 1, Integer::sum);
+                    
+                    // Registrar status aprovado
+                    statusPorUsuario.computeIfAbsent(usuarioId, k -> new ArrayList<>())
+                                   .add(talhao.getStatus().name());
+                }
+            }
+        }
+        
+        // Preparar resultado
+        Map<String, Object> estatisticas = new HashMap<>();
+        estatisticas.put("totalAprovacoes", aprovacoesPorUsuario.values().stream().mapToInt(Integer::intValue).sum());
+        estatisticas.put("totalUsuariosAtivos", aprovacoesPorUsuario.size());
+        estatisticas.put("aprovacoesPorUsuario", aprovacoesPorUsuario);
+        estatisticas.put("statusPorUsuario", statusPorUsuario);
+        
+        // Top 5 usuários com mais aprovações
+        List<Map.Entry<Long, Integer>> topUsuarios = aprovacoesPorUsuario.entrySet().stream()
+                .sorted(Map.Entry.<Long, Integer>comparingByValue().reversed())
+                .limit(5)
+                .collect(Collectors.toList());
+        
+        Map<Long, Integer> top5Usuarios = new LinkedHashMap<>();
+        topUsuarios.forEach(entry -> top5Usuarios.put(entry.getKey(), entry.getValue()));
+        estatisticas.put("top5UsuariosAprovadores", top5Usuarios);
+        
+        log.info("Estatísticas geradas: {} aprovações totais, {} usuários ativos", 
+                estatisticas.get("totalAprovacoes"), estatisticas.get("totalUsuariosAtivos"));
+        
+        return estatisticas;
+    }
+    
+    /**
+     * Obter histórico de aprovações de um usuário específico
+     * 
+     * @param usuarioId ID do usuário
+     * @return Lista de aprovações do usuário
+     */
+    public List<Map<String, Object>> obterHistoricoAprovacaoUsuario(Long usuarioId) {
+        log.info("Obtendo histórico de aprovações do usuário ID {}", usuarioId);
+        
+        List<Area> todasAreas = areaRepository.findAll();
+        List<Map<String, Object>> historico = new ArrayList<>();
+        
+        for (Area area : todasAreas) {
+            for (Talhao talhao : area.getTalhoes()) {
+                if (Objects.equals(talhao.getUsuarioAprovacaoId(), usuarioId)) {
+                    Map<String, Object> aprovacao = new HashMap<>();
+                    aprovacao.put("areaId", area.getId());
+                    aprovacao.put("areaNome", area.getNome());
+                    aprovacao.put("talhaoId", talhao.getId());
+                    aprovacao.put("talhaoMnTl", talhao.getMnTl());
+                    aprovacao.put("status", talhao.getStatus().name());
+                    aprovacao.put("dataAprovacao", talhao.getDataAprovacao());
+                    
+                    historico.add(aprovacao);
+                }
+            }
+        }
+        
+        // Ordenar por data de aprovação (mais recente primeiro)
+        historico.sort((a, b) -> {
+            java.time.LocalDateTime dataA = (java.time.LocalDateTime) a.get("dataAprovacao");
+            java.time.LocalDateTime dataB = (java.time.LocalDateTime) b.get("dataAprovacao");
+            if (dataA == null && dataB == null) return 0;
+            if (dataA == null) return 1;
+            if (dataB == null) return -1;
+            return dataB.compareTo(dataA);
+        });
+        
+        log.info("Histórico do usuário ID {} contém {} aprovações", usuarioId, historico.size());
+        return historico;
+    }
+    
+    /**
+     * Obter relatório de produtividade dos aprovadores
+     * 
+     * @return Map com métricas de produtividade
+     */
+    public Map<String, Object> obterRelatorioProdutiviadeAprovadores() {
+        log.info("Gerando relatório de produtividade dos aprovadores");
+        
+        List<Area> todasAreas = areaRepository.findAll();
+        Map<Long, Map<String, Object>> produtividadePorUsuario = new HashMap<>();
+        
+        for (Area area : todasAreas) {
+            for (Talhao talhao : area.getTalhoes()) {
+                if (talhao.getUsuarioAprovacaoId() != null && talhao.getDataAprovacao() != null) {
+                    Long usuarioId = talhao.getUsuarioAprovacaoId();
+                    
+                    produtividadePorUsuario.computeIfAbsent(usuarioId, k -> {
+                        Map<String, Object> metricas = new HashMap<>();
+                        metricas.put("totalAprovacoes", 0);
+                        metricas.put("primeiraAprovacao", talhao.getDataAprovacao());
+                        metricas.put("ultimaAprovacao", talhao.getDataAprovacao());
+                        metricas.put("statusDistribuicao", new HashMap<String, Integer>());
+                        return metricas;
+                    });
+                    
+                    Map<String, Object> metricas = produtividadePorUsuario.get(usuarioId);
+                    
+                    // Atualizar contadores
+                    metricas.put("totalAprovacoes", (Integer) metricas.get("totalAprovacoes") + 1);
+                    
+                    // Atualizar datas
+                    java.time.LocalDateTime primeira = (java.time.LocalDateTime) metricas.get("primeiraAprovacao");
+                    java.time.LocalDateTime ultima = (java.time.LocalDateTime) metricas.get("ultimaAprovacao");
+                    
+                    if (talhao.getDataAprovacao().isBefore(primeira)) {
+                        metricas.put("primeiraAprovacao", talhao.getDataAprovacao());
+                    }
+                    if (talhao.getDataAprovacao().isAfter(ultima)) {
+                        metricas.put("ultimaAprovacao", talhao.getDataAprovacao());
+                    }
+                    
+                    // Distribuição de status
+                    @SuppressWarnings("unchecked")
+                    Map<String, Integer> statusDist = (Map<String, Integer>) metricas.get("statusDistribuicao");
+                    statusDist.merge(talhao.getStatus().name(), 1, Integer::sum);
+                }
+            }
+        }
+        
+        // Calcular período ativo e média de aprovações para cada usuário
+        produtividadePorUsuario.forEach((usuarioId, metricas) -> {
+            java.time.LocalDateTime primeira = (java.time.LocalDateTime) metricas.get("primeiraAprovacao");
+            java.time.LocalDateTime ultima = (java.time.LocalDateTime) metricas.get("ultimaAprovacao");
+            
+            long diasAtivos = java.time.Duration.between(primeira, ultima).toDays() + 1;
+            double mediaAprovacoesPorDia = (Integer) metricas.get("totalAprovacoes") / (double) diasAtivos;
+            
+            metricas.put("diasAtivos", diasAtivos);
+            metricas.put("mediaAprovacoesPorDia", Math.round(mediaAprovacoesPorDia * 100.0) / 100.0);
+        });
+        
+        Map<String, Object> relatorio = new HashMap<>();
+        relatorio.put("usuariosMetricas", produtividadePorUsuario);
+        relatorio.put("totalUsuarios", produtividadePorUsuario.size());
+        relatorio.put("dataGeracao", java.time.LocalDateTime.now());
+        
+        log.info("Relatório de produtividade gerado para {} usuários", produtividadePorUsuario.size());
+        return relatorio;
     }
 
 }

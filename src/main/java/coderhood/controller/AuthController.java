@@ -12,7 +12,13 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.http.HttpStatus;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -23,18 +29,33 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
+    private final SecurityContextRepository securityContextRepository;
     
-    public AuthController(AuthenticationManager authenticationManager, UserRepository userRepository) {
+    public AuthController(AuthenticationManager authenticationManager, 
+                         UserRepository userRepository,
+                         SecurityContextRepository securityContextRepository) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
+        this.securityContextRepository = securityContextRepository;
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, String>> authenticateUser(@RequestBody LoginRequestDto loginRequest) {
+    public ResponseEntity<Map<String, String>> authenticateUser(
+            @RequestBody LoginRequestDto loginRequest,
+            HttpServletRequest request,
+            HttpServletResponse response) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.email(), loginRequest.senha())
             );
+            
+            // Criar o contexto de segurança e definir a autenticação
+            SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
+            securityContext.setAuthentication(authentication);
+            SecurityContextHolder.setContext(securityContext);
+            
+            // Salvar o contexto de segurança na sessão
+            securityContextRepository.saveContext(securityContext, request, response);
             
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             String role = userDetails.getAuthorities().stream()
@@ -45,14 +66,29 @@ public class AuthController {
             coderhood.model.User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + userDetails.getUsername()));
             
-            Map<String, String> response = new HashMap<>();
-            response.put("name", user.getName());
-            response.put("role", adjustRoleString(role));
+            Map<String, String> responseBody = new HashMap<>();
+            responseBody.put("name", user.getName());
+            responseBody.put("role", adjustRoleString(role));
+            responseBody.put("message", "Login realizado com sucesso");
             
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(responseBody);
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid credentials"));
         }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(
+            HttpServletRequest request, 
+            HttpServletResponse response) {
+        
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication != null) {
+            new SecurityContextLogoutHandler().logout(request, response, authentication);
+        }
+        
+        return ResponseEntity.ok(Map.of("message", "Logout realizado com sucesso"));
     }
 
     private String adjustRoleString(String input) {

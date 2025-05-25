@@ -7,6 +7,11 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
+import org.springframework.security.web.context.DelegatingSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 
 @Configuration
 public class SecurityConfig {
@@ -21,16 +26,43 @@ public class SecurityConfig {
                 corsConfig.addAllowedOriginPattern("*");
                 corsConfig.addAllowedMethod("*");
                 corsConfig.addAllowedHeader("*");
+                corsConfig.setAllowCredentials(true); // Permitir cookies/sessões
                 return corsConfig;
             }))
             .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+            .securityContext(securityContext -> securityContext
+                .securityContextRepository(securityContextRepository())
+            )
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                .maximumSessions(1)
+                .maxSessionsPreventsLogin(false)
+            )
+            .authorizeHttpRequests(authz -> authz
+                .requestMatchers("/auth/**").permitAll() // Permitir acesso livre ao login
+                .requestMatchers("/users/**").permitAll() // Temporário para testes
+                .requestMatchers("/areas/**").authenticated() // Rotas de áreas precisam de autenticação
+                .anyRequest().authenticated() // Todas as outras rotas precisam de autenticação
+            );
 
         return http.build();
     }
 
     @Bean
+    public SecurityContextRepository securityContextRepository() {
+        return new DelegatingSecurityContextRepository(
+            new RequestAttributeSecurityContextRepository(),
+            new HttpSessionSecurityContextRepository()
+        );
+    }
+
+    @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
     }
 }
