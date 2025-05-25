@@ -1,6 +1,7 @@
 package coderhood.service;
 
 import coderhood.dto.*;
+import coderhood.dto.area.AreaDto;
 import coderhood.dto.spatial.FeatureCollectionDto;
 import coderhood.dto.spatial.FeatureDto;
 import coderhood.exception.GeoJsonParsingException;

@@ -1,6 +1,7 @@
 package coderhood.controller;
 
 import coderhood.dto.*;
+import coderhood.dto.area.AreaDto;
 import coderhood.exception.MessageException;
 import coderhood.model.Area;
 import coderhood.service.AreaService;
