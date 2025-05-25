@@ -1,6 +1,8 @@
 package coderhood.service;
 
 import coderhood.dto.*;
+import coderhood.dto.area.AreaBasicDto;
+import coderhood.dto.area.AreaDto;
 import coderhood.dto.spatial.FeatureCollectionDto;
 import coderhood.dto.spatial.FeatureDto;
 import coderhood.exception.GeoJsonParsingException;
@@ -235,7 +237,7 @@ public class AreaService {
         return updatedArea;
     }
 
-    public Optional<Area> findAreaById(Long id) {
+    public Optional<AreaDto> findAreaById(Long id) {
         log.info("Buscando área por ID: {}", id);
         Optional<Area> area = areaRepository.findById(id);
         if (area.isPresent()) {
@@ -243,15 +245,13 @@ public class AreaService {
         } else {
             log.warn("Área com ID {} não encontrada", id);
         }
-        return area;
+        return area.map(this::toDto);
     }
 
-    public List<AreaDto> findAllAreas() {
+    public List<AreaBasicDto> findAllAreas()
+    {
         log.info("Buscando todas as áreas");
-        List<Area> areas = areaRepository.findAll();
-        return areas.stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        return areaRepository.findAllBasicDto();
     }
 
     public Area updateArea(Long id, AreaDto areaDto) {
@@ -451,7 +451,8 @@ public class AreaService {
         return GeoJsonParser.fromGeoJson(mapper.writeValueAsString(geojson));
     }
 
-    private AreaDto toDto(Area area) {
+    private AreaDto toDto(Area area)
+    {
         AreaDto dto = new AreaDto();
 
         dto.setId(area.getId());
@@ -468,7 +469,8 @@ public class AreaService {
         return dto;
     }
 
-    private TalhaoDto toDto(Talhao talhao) {
+    private TalhaoDto toDto(Talhao talhao)
+    {
         TalhaoDto dto = new TalhaoDto();
 
         dto.setId(talhao.getId());
