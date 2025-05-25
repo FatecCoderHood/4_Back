@@ -3,6 +3,7 @@ package coderhood.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import org.locationtech.jts.geom.Geometry;
@@ -39,6 +40,12 @@ public class Talhao {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private StatusArea status = StatusArea.EM_ABERTO;
+
+    @Column(name = "usuario_aprovacao_id")
+    private Long usuarioAprovacaoId;
+
+    @Column(name = "data_aprovacao")
+    private LocalDateTime dataAprovacao;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "area_id", nullable = false)
