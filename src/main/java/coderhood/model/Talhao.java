@@ -47,6 +47,9 @@ public class Talhao {
     @Column(name = "data_aprovacao")
     private LocalDateTime dataAprovacao;
 
+    @Column(name = "analista_id")
+    private Long analistaId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "area_id", nullable = false)
     @JsonBackReference

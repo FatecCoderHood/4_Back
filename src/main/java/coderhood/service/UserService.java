@@ -5,6 +5,7 @@ import coderhood.exception.ResourceNotFoundException;
 import coderhood.exception.BusinessRuleException;
 import coderhood.model.User;
 import coderhood.repository.UserRepository;
+import coderhood.repository.TalhaoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -21,6 +23,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TalhaoRepository talhaoRepository;
 
     @Transactional(readOnly = true)
     public UserResponseDto getUserById(Long id) { // Mudou para Long
@@ -80,6 +83,38 @@ public class UserService {
             throw new ResourceNotFoundException("Usuário não encontrado");
         }
         userRepository.deleteById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AnalistaEstatisticasDto> getAnalistasEstatisticas() {
+        log.info("Obtendo estatísticas dos analistas");
+        
+        List<User> analistas = userRepository.findByTipoAcesso(User.TipoAcesso.ANALISTA);
+        AtomicInteger numeroSequencial = new AtomicInteger(1);
+        
+        return analistas.stream()
+            .map(analista -> {
+                Long quantidadeTalhoes = talhaoRepository.countByAnalistaId(analista.getId());
+                
+                return AnalistaEstatisticasDto.builder()
+                    .id(analista.getId())
+                    .nome(analista.getNome())
+                    .email(analista.getEmail())
+                    .quantidadeTalhoes(quantidadeTalhoes)
+                    .horasAnalisadas(0L) // Implementar futuramente
+                    .numeroNomeAnalyst(numeroSequencial.getAndIncrement())
+                    .build();
+            })
+            .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserResponseDto> getAnalistas() {
+        log.info("Obtendo lista de analistas");
+        return userRepository.findByTipoAcesso(User.TipoAcesso.ANALISTA)
+            .stream()
+            .map(this::convertToDto)
+            .collect(Collectors.toList());
     }
 
     private UserResponseDto convertToDto(User user) {

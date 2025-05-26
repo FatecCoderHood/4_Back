@@ -19,4 +19,5 @@ public class TalhaoDto {
     private Double produtividadePorAno;
     private StatusArea status = StatusArea.EM_ABERTO;
     private List<String> ervasDaninhas;
+    private Long analistaId;
 }

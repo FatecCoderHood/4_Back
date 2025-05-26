@@ -88,4 +88,20 @@ public class UserController {
     public List<UserResponseDto> getAllUsers() {
         return userService.getAllUsers();
     }
+
+    @Operation(summary = "Buscar estatísticas dos analistas")
+    @ApiResponse(responseCode = "200", description = "Estatísticas dos analistas encontradas",
+        content = @Content(schema = @Schema(implementation = AnalistaEstatisticasDto.class)))
+    @GetMapping("/analistas/estatisticas")
+    public List<AnalistaEstatisticasDto> getAnalistasEstatisticas() {
+        return userService.getAnalistasEstatisticas();
+    }
+
+    @Operation(summary = "Buscar todos os analistas")
+    @ApiResponse(responseCode = "200", description = "Analistas encontrados",
+        content = @Content(schema = @Schema(implementation = UserResponseDto.class)))
+    @GetMapping("/analistas")
+    public List<UserResponseDto> getAnalistas() {
+        return userService.getAnalistas();
+    }
 }
