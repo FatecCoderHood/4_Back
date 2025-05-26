@@ -20,7 +20,7 @@ public class TiffFile {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String fileName;
 
     @Column(nullable = false)
