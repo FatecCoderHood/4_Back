@@ -33,10 +33,14 @@ public class TiffFileController {
                 return ResponseEntity.badRequest().body("Arquivo não pode estar vazio");
             }
 
-            log.debug("Verificando tipo do arquivo: {}", file.getContentType());
-            if (!file.getContentType().equals("image/tiff")) {
-                log.warn("Tipo de arquivo inválido: {}", file.getContentType());
-                return ResponseEntity.badRequest().body("Apenas arquivos TIFF são permitidos");
+            // Nova validação por extensão do arquivo (substitui a validação por
+            // contentType)
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null ||
+                    (!originalFilename.toLowerCase().endsWith(".tif") &&
+                            !originalFilename.toLowerCase().endsWith(".tiff"))) {
+                log.warn("Tipo de arquivo inválido: {}", originalFilename);
+                return ResponseEntity.badRequest().body("Apenas arquivos .tif ou .tiff são permitidos");
             }
 
             TiffFileDto response = tiffFileService.uploadTiff(file, areaId, fileName);
