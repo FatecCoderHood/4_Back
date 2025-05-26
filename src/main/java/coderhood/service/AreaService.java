@@ -303,6 +303,7 @@ public class AreaService {
         talhao.setProdutividadePorAno(talhaoDto.getProdutividadePorAno());
         talhao.setGeojson(talhaoDto.getGeojson());
         talhao.setStatus(talhaoDto.getStatus() != null ? talhaoDto.getStatus() : StatusArea.EM_ABERTO);
+        talhao.setAnalistaId(talhaoDto.getAnalistaId());
 
         if (talhaoDto.getErvasDaninhas() != null) {
             log.debug("Atualizando ervas daninhas: {}", talhaoDto.getErvasDaninhas());
@@ -379,6 +380,7 @@ public class AreaService {
         talhao.setProdutividadePorAno(talhaoDto.getProdutividadePorAno());
         talhao.setGeojson(talhaoDto.getGeojson());
         talhao.setStatus(talhaoDto.getStatus() != null ? talhaoDto.getStatus() : StatusArea.EM_ABERTO);
+        talhao.setAnalistaId(talhaoDto.getAnalistaId());
 
         if (talhaoDto.getErvasDaninhas() != null) {
             log.debug("Adicionando ervas daninhas: {}", talhaoDto.getErvasDaninhas());
