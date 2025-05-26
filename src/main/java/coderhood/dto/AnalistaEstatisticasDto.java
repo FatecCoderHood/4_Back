@@ -12,6 +12,6 @@ public class AnalistaEstatisticasDto {
     private String nome;
     private String email;
     private Long quantidadeTalhoes;
-    private Long horasAnalisadas; // Pode ser implementado futuramente
+    private Long horasAnalisadas;
     private Integer numeroNomeAnalyst;
 }
