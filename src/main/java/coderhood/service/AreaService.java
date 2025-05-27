@@ -14,6 +14,7 @@ import coderhood.repository.AreaRepository;
 import coderhood.utils.GeoJsonParser;
 import coderhood.utils.GeometryMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -154,7 +155,7 @@ public class AreaService {
                     continue;
                 }
 
-                Integer nmTl = getIntegerProperty(properties, "NM_TL", "nmTl");
+                Integer nmTl = detectAndGetDaninhasID(properties);
                 if (nmTl == null) {
                     log.warn("Feature sem NM_TL - ignorando");
                     continue;
@@ -522,7 +523,7 @@ public class AreaService {
                 if (properties == null)
                     continue;
 
-                Integer nmTl = getIntegerProperty(properties, "NM_TL", "nmTl");
+                Integer nmTl = detectAndGetDaninhasID(properties);
                 String classe = getStringProperty(properties, "CLASSE", "classe");
 
                 if (Objects.equals(nmTl, mnTl) && "DANINHA".equalsIgnoreCase(classe)) {
@@ -751,4 +752,28 @@ public class AreaService {
         return relatorio;
     }
 
+    private @Nullable Integer detectAndGetDaninhasID(Map<String, Object> properties) {
+        if (properties == null) {
+            log.warn("Propriedades nulas ao detectar ID da daninha");
+            return null;
+        }
+
+        String[][] keyPairs = {
+                {"MN_TL", "mnTl"}, // Convenção automática
+                {"NM_TL", "nmTl"}, // Convenção manual
+        };
+
+        for (String[] pair : keyPairs) {
+            Integer result = getIntegerProperty(properties, pair[0], pair[1]);
+            if (result != null) {
+                log.debug("ID das daninhas {} detectado usando chaves {}/{}",
+                        result, pair[0], pair[1]);
+                return result;
+            }
+        }
+
+        log.warn("Nenhuma chave de ID de daninhas encontrado. Chaves disponíveis: {}",
+                properties.keySet());
+        return null;
+    }
 }
