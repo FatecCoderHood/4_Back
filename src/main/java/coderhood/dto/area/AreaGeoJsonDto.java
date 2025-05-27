@@ -1,4 +1,4 @@
-package coderhood.dto;
+package coderhood.dto.area;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;

@@ -3,8 +3,10 @@ package coderhood.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.locationtech.jts.geom.Geometry;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
@@ -17,7 +19,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 public class Talhao {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // <- Long ID em ordem
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Lob
@@ -29,7 +31,24 @@ public class Talhao {
     private String solo;
     private String cultura;
     private String safra;
+
+    @Column(columnDefinition = "SDO_GEOMETRY")
+    private Geometry geometry;
+
     private Double produtividadePorAno;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusArea status = StatusArea.EM_ABERTO;
+
+    @Column(name = "usuario_aprovacao_id")
+    private Long usuarioAprovacaoId;
+
+    @Column(name = "data_aprovacao")
+    private LocalDateTime dataAprovacao;
+
+    @Column(name = "analista_id")
+    private Long analistaId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "area_id", nullable = false)
@@ -41,5 +60,4 @@ public class Talhao {
     @Lob
     @Column(name = "erva_daninha")
     private List<String> ervasDaninhas = new ArrayList<>();
-
 }

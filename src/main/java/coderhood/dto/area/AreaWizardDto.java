@@ -1,10 +1,10 @@
-package coderhood.dto;
+package coderhood.dto.area;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.util.List;
-import java.util.UUID;
+
+import coderhood.dto.TalhaoDto;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class AreaWizardDto {

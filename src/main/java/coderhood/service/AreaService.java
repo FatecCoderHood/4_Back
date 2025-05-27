@@ -1,15 +1,26 @@
 package coderhood.service;
 
 import coderhood.dto.*;
+import coderhood.dto.area.AreaBasicDto;
+import coderhood.dto.area.AreaDto;
+import coderhood.dto.spatial.FeatureCollectionDto;
+import coderhood.dto.spatial.FeatureDto;
+import coderhood.exception.GeoJsonParsingException;
 import coderhood.exception.MessageException;
 import coderhood.model.Area;
 import coderhood.model.StatusArea;
 import coderhood.model.Talhao;
 import coderhood.repository.AreaRepository;
+import coderhood.utils.GeoJsonParser;
+import coderhood.utils.GeometryMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -20,46 +31,35 @@ public class AreaService {
     @Autowired
     private AreaRepository areaRepository;
 
-    public Area createArea(AreaDto areaDTO) {
-        log.info("Criando nova área básica");
-        Area area = new Area();
-        area.setNome(areaDTO.getNome());
-        area.setEstado(areaDTO.getEstado());
-        area.setCidade(areaDTO.getCidade());
-        area.setStatus(areaDTO.getStatus() != null ? areaDTO.getStatus() : StatusArea.EM_ANALISE);
-        log.debug("Área criada (ainda não salva): {}", area);
-        Area savedArea = areaRepository.save(area);
-        log.info("Área salva com ID: {}", savedArea.getId());
-        return savedArea;
-    }
-
-    public Area createAreaWithGeoJson(AreaGeoJsonDto areaDTO) {
-        log.info("Iniciando criação de área com GeoJSON");
-        log.debug("DTO recebido: {}", areaDTO);
+    public Area createArea(AreaDto areaDto) throws IOException, GeoJsonParsingException {
+        log.info("Iniciando criação de área");
+        log.debug("DTO recebido: {}", areaDto);
 
         Area area = new Area();
-        area.setNome(areaDTO.getNome());
-        area.setEstado(areaDTO.getEstado());
-        area.setCidade(areaDTO.getCidade());
+        area.setNome(areaDto.getNome());
+        area.setEstado(areaDto.getEstado());
+        area.setCidade(areaDto.getCidade());
         area.setStatus(StatusArea.EM_ANALISE);
 
-        if (areaDTO.getGeojson() != null) {
+        if (areaDto.getGeojson() != null && !areaDto.getGeojson().isEmpty()) {
             log.info("Processando GeoJSON principal");
-            List<Talhao> talhoes = processarGeoJson(areaDTO.getGeojson());
+
+            List<Talhao> talhoes = processarGeoJson(areaDto.getGeojson());
+
             talhoes.forEach(area::addTalhao);
             log.info("{} talhões adicionados", talhoes.size());
         }
 
-        if (areaDTO.getErvasDaninhasGeojson() != null) {
+        if (areaDto.getErvasDaninhasGeojson() != null) {
             log.info("Processando GeoJSON de ervas daninhas");
-            processarErvasDaninhasGeoJson(area, areaDTO.getErvasDaninhasGeojson());
+            processarErvasDaninhasGeoJson(area, areaDto.getErvasDaninhasGeojson());
         } else {
             log.warn("Nenhum GeoJSON de ervas daninhas fornecido");
         }
 
-        if (areaDTO.getProdutividadePorAno() != null) {
+        if (areaDto.getProdutividadePorAno() != null) {
             log.info("Processando produtividade por ano");
-            areaDTO.getProdutividadePorAno().forEach((mnTl, produtividade) -> {
+            areaDto.getProdutividadePorAno().forEach((mnTl, produtividade) -> {
                 area.getTalhoes().stream()
                         .filter(t -> mnTl.equals(t.getMnTl().toString()))
                         .findFirst()
@@ -71,7 +71,9 @@ public class AreaService {
         }
 
         log.info("Salvando área no banco de dados");
+
         Area savedArea = areaRepository.save(area);
+
         log.info("Área criada com ID: {}", savedArea.getId());
         log.debug("Área salva: {}", savedArea);
 
@@ -79,20 +81,26 @@ public class AreaService {
     }
 
     @SuppressWarnings("unchecked")
-    private List<Talhao> processarGeoJson(Map<String, Object> geojson) {
+    private List<Talhao> processarGeoJson(Map<String, Object> geojson)
+            throws JsonProcessingException, GeoJsonParsingException {
+        FeatureCollectionDto featureCollectionDto = geojsonToFeatureCollectionDto(geojson);
+
         log.info("Processando GeoJSON principal");
         try {
-            if (!(geojson.get("features") instanceof List)) {
-                throw new MessageException("Formato GeoJSON inválido - 'features' deve ser uma lista");
-            }
-
-            List<Map<String, Object>> features = (List<Map<String, Object>>) geojson.get("features");
+            List<FeatureDto> features = featureCollectionDto.getFeatures();
             log.debug("Número de features encontradas: {}", features.size());
 
+            if (features == null || features.isEmpty()) {
+                throw new MessageException("Invalid GeoJSON format - 'features' prop not found for featureCollection");
+            }
+
             return features.stream().map(feature -> {
-                Map<String, Object> properties = (Map<String, Object>) feature.getOrDefault("properties",
-                        new HashMap<>());
+                Map<String, Object> properties = feature.getProperties();
                 log.debug("Processando feature com properties: {}", properties);
+
+                if (properties == null || properties.isEmpty()) {
+                    throw new MessageException("Invalid GeoJSON format - 'properties' prop not found for feature");
+                }
 
                 Talhao talhao = new Talhao();
                 talhao.setMnTl(getIntegerProperty(properties, "MN_TL", "mnTl"));
@@ -106,7 +114,10 @@ public class AreaService {
                 log.debug("Produtividade definida para: {}", talhao.getProdutividadePorAno());
 
                 talhao.setGeojson(feature.toString());
+                talhao.setGeometry(GeometryMapper.fromDto(feature.getGeometry()));
+                log.info("RTX was here - AreaService::processarGeoSjon {}", talhao.getGeometry().toText());
                 log.debug("Talhão criado: {}", talhao);
+
                 return talhao;
             }).collect(Collectors.toList());
         } catch (ClassCastException e) {
@@ -183,7 +194,8 @@ public class AreaService {
         log.info("Processamento de ervas daninhas concluído");
     }
 
-    public Area updateAreaWithGeoJson(Long id, AreaGeoJsonDto areaDto) {
+    public Area updateAreaWithGeoJson(Long id, AreaDto areaDto)
+            throws JsonProcessingException, GeoJsonParsingException {
         log.info("Atualizando área com ID {} com GeoJSON", id);
         Area area = getAreaOrThrow(id);
         log.debug("Área encontrada para atualização: {}", area);
@@ -218,13 +230,14 @@ public class AreaService {
             });
         }
 
+        area.atualizarStatusArea();
         log.info("Salvando área atualizada");
         Area updatedArea = areaRepository.save(area);
         log.info("Área ID {} atualizada com sucesso", id);
         return updatedArea;
     }
 
-    public Optional<Area> findAreaById(Long id) {
+    public Optional<AreaDto> findAreaById(Long id) {
         log.info("Buscando área por ID: {}", id);
         Optional<Area> area = areaRepository.findById(id);
         if (area.isPresent()) {
@@ -232,14 +245,13 @@ public class AreaService {
         } else {
             log.warn("Área com ID {} não encontrada", id);
         }
-        return area;
+        return area.map(this::toDto);
     }
 
-    public List<Area> findAllAreas() {
+    public List<AreaBasicDto> findAllAreas()
+    {
         log.info("Buscando todas as áreas");
-        List<Area> areas = areaRepository.findAll();
-        log.debug("Número de áreas encontradas: {}", areas.size());
-        return areas;
+        return areaRepository.findAllBasicDto();
     }
 
     public Area updateArea(Long id, AreaDto areaDto) {
@@ -290,12 +302,15 @@ public class AreaService {
         talhao.setSafra(talhaoDto.getSafra());
         talhao.setProdutividadePorAno(talhaoDto.getProdutividadePorAno());
         talhao.setGeojson(talhaoDto.getGeojson());
+        talhao.setStatus(talhaoDto.getStatus() != null ? talhaoDto.getStatus() : StatusArea.EM_ABERTO);
+        talhao.setAnalistaId(talhaoDto.getAnalistaId());
 
         if (talhaoDto.getErvasDaninhas() != null) {
             log.debug("Atualizando ervas daninhas: {}", talhaoDto.getErvasDaninhas());
             talhao.setErvasDaninhas(talhaoDto.getErvasDaninhas());
         }
 
+        area.atualizarStatusArea();
         log.info("Salvando talhão atualizado");
         Area updatedArea = areaRepository.save(area);
 
@@ -321,6 +336,7 @@ public class AreaService {
             throw new MessageException("Talhão não encontrado");
         }
 
+        area.atualizarStatusArea();
         log.info("Talhão removido - salvando área");
         areaRepository.save(area);
         log.info("Talhão ID {} deletado com sucesso", talhaoId);
@@ -363,6 +379,8 @@ public class AreaService {
         talhao.setSafra(talhaoDto.getSafra());
         talhao.setProdutividadePorAno(talhaoDto.getProdutividadePorAno());
         talhao.setGeojson(talhaoDto.getGeojson());
+        talhao.setStatus(talhaoDto.getStatus() != null ? talhaoDto.getStatus() : StatusArea.EM_ABERTO);
+        talhao.setAnalistaId(talhaoDto.getAnalistaId());
 
         if (talhaoDto.getErvasDaninhas() != null) {
             log.debug("Adicionando ervas daninhas: {}", talhaoDto.getErvasDaninhas());
@@ -370,7 +388,6 @@ public class AreaService {
         }
 
         area.addTalhao(talhao);
-
         Area savedArea = areaRepository.save(area);
 
         Talhao savedTalhao = savedArea.getTalhoes().stream()
@@ -429,4 +446,309 @@ public class AreaService {
         }
         return value.toString();
     }
+
+    private FeatureCollectionDto geojsonToFeatureCollectionDto(Map<String, Object> geojson)
+            throws GeoJsonParsingException, JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        return GeoJsonParser.fromGeoJson(mapper.writeValueAsString(geojson));
+    }
+
+    private AreaDto toDto(Area area)
+    {
+        AreaDto dto = new AreaDto();
+
+        dto.setId(area.getId());
+        dto.setNome(area.getNome());
+        dto.setEstado(area.getEstado());
+        dto.setCidade(area.getCidade());
+        dto.setStatus(area.getStatus());
+
+        List<TalhaoDto> talhaoDtos = area.getTalhoes().stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+        dto.setTalhoes(talhaoDtos);
+
+        return dto;
+    }
+
+    private TalhaoDto toDto(Talhao talhao)
+    {
+        TalhaoDto dto = new TalhaoDto();
+
+        dto.setId(talhao.getId());
+        dto.setGeojson(talhao.getGeojson());
+        dto.setMnTl(talhao.getMnTl());
+        dto.setAreaHaTl(talhao.getAreaHaTl());
+        dto.setSolo(talhao.getSolo());
+        dto.setCultura(talhao.getCultura());
+        dto.setSafra(talhao.getSafra());
+        dto.setProdutividadePorAno(talhao.getProdutividadePorAno());
+        dto.setErvasDaninhas(talhao.getErvasDaninhas());
+        dto.setStatus(talhao.getStatus());
+
+        return dto;
+    }
+
+    public void adicionarErvasDaninhas(Long areaId, Long talhaoId, Map<String, Object> geojsonErvas) {
+        log.info("Adicionando ervas daninhas ao talhão ID {} da área ID {}", talhaoId, areaId);
+        Area area = getAreaOrThrow(areaId);
+
+        Talhao talhao = area.getTalhoes().stream()
+                .filter(t -> t.getId().equals(talhaoId))
+                .findFirst()
+                .orElseThrow(() -> new MessageException("Talhão não encontrado"));
+
+        List<String> ervasExtraidas = extrairErvasDaninhasDeGeoJson(geojsonErvas, talhao.getMnTl());
+
+        if (ervasExtraidas.isEmpty()) {
+            log.warn("Nenhuma erva daninha do talhão {} encontrada no GeoJSON", talhao.getMnTl());
+        }
+
+        talhao.getErvasDaninhas().addAll(ervasExtraidas);
+        areaRepository.save(area);
+        log.info("Ervas daninhas adicionadas com sucesso ao talhão {}", talhao.getMnTl());
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> extrairErvasDaninhasDeGeoJson(Map<String, Object> geojson, Integer mnTl) {
+        List<String> ervas = new ArrayList<>();
+
+        try {
+            List<Map<String, Object>> features = (List<Map<String, Object>>) geojson.get("features");
+
+            for (Map<String, Object> feature : features) {
+                Map<String, Object> properties = (Map<String, Object>) feature.get("properties");
+
+                if (properties == null)
+                    continue;
+
+                Integer nmTl = getIntegerProperty(properties, "NM_TL", "nmTl");
+                String classe = getStringProperty(properties, "CLASSE", "classe");
+
+                if (Objects.equals(nmTl, mnTl) && "DANINHA".equalsIgnoreCase(classe)) {
+                    ervas.add(feature.toString());
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Erro ao extrair ervas daninhas do GeoJSON", e);
+            throw new MessageException("Erro ao extrair ervas daninhas do GeoJSON: " + e.getMessage());
+        }
+
+        return ervas;
+    }
+
+    public void removerErvasDaninhas(Long areaId, Long talhaoId) {
+        log.info("Removendo ervas daninhas do talhão ID {} da área ID {}", talhaoId, areaId);
+        Area area = getAreaOrThrow(areaId);
+
+        Talhao talhao = area.getTalhoes().stream()
+                .filter(t -> t.getId().equals(talhaoId))
+                .findFirst()
+                .orElseThrow(() -> new MessageException("Talhão não encontrado"));
+
+        talhao.getErvasDaninhas().clear();
+        areaRepository.save(area);
+        log.info("Todas as ervas daninhas removidas do talhão {}", talhao.getMnTl());
+    }
+
+    public void updateTalhaoStatus(Long areaId, Long talhaoId, StatusArea status, Long usuarioId) {
+        log.info("Atualizando status do talhão ID {} para {} pelo usuário ID {}", talhaoId, status, usuarioId);
+        Area area = getAreaOrThrow(areaId);
+
+        Talhao talhao = area.getTalhoes().stream()
+                .filter(t -> t.getId().equals(talhaoId))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.error("Talhão ID {} não encontrado na área ID {}", talhaoId, areaId);
+                    return new MessageException("Talhão não encontrado");
+                });
+
+        talhao.setStatus(status);
+        talhao.setUsuarioAprovacaoId(usuarioId);
+        talhao.setDataAprovacao(java.time.LocalDateTime.now());
+        
+        area.atualizarStatusArea();
+        areaRepository.save(area);
+        log.info("Status do talhão ID {} atualizado para {} pelo usuário ID {} em {}", 
+                talhaoId, status, usuarioId, talhao.getDataAprovacao());
+    }
+
+    public StatusArea getTalhaoStatus(Long areaId, Long talhaoId) {
+        log.info("Obtendo status do talhão ID {} da área ID {}", talhaoId, areaId);
+        Area area = getAreaOrThrow(areaId);
+
+        return area.getTalhoes().stream()
+                .filter(t -> t.getId().equals(talhaoId))
+                .findFirst()
+                .map(Talhao::getStatus)
+                .orElseThrow(() -> {
+                    log.error("Talhão ID {} não encontrado na área ID {}", talhaoId, areaId);
+                    return new MessageException("Talhão não encontrado");
+                });
+    }
+
+    /**
+     * Obter estatísticas dos usuários que mais aprovaram/modificaram status de talhões
+     * 
+     * @return Map com estatísticas dos usuários
+     */
+    public Map<String, Object> obterEstatisticasUsuarios() {
+        log.info("Obtendo estatísticas de usuários para relatórios KPI");
+        
+        List<Area> todasAreas = areaRepository.findAll();
+        Map<Long, Integer> aprovacoesPorUsuario = new HashMap<>();
+        Map<Long, List<String>> statusPorUsuario = new HashMap<>();
+        
+        // Processar todos os talhões para contar aprovações por usuário
+        for (Area area : todasAreas) {
+            for (Talhao talhao : area.getTalhoes()) {
+                if (talhao.getUsuarioAprovacaoId() != null) {
+                    Long usuarioId = talhao.getUsuarioAprovacaoId();
+                    
+                    // Contar aprovações
+                    aprovacoesPorUsuario.merge(usuarioId, 1, Integer::sum);
+                    
+                    // Registrar status aprovado
+                    statusPorUsuario.computeIfAbsent(usuarioId, k -> new ArrayList<>())
+                                   .add(talhao.getStatus().name());
+                }
+            }
+        }
+        
+        // Preparar resultado
+        Map<String, Object> estatisticas = new HashMap<>();
+        estatisticas.put("totalAprovacoes", aprovacoesPorUsuario.values().stream().mapToInt(Integer::intValue).sum());
+        estatisticas.put("totalUsuariosAtivos", aprovacoesPorUsuario.size());
+        estatisticas.put("aprovacoesPorUsuario", aprovacoesPorUsuario);
+        estatisticas.put("statusPorUsuario", statusPorUsuario);
+        
+        // Top 5 usuários com mais aprovações
+        List<Map.Entry<Long, Integer>> topUsuarios = aprovacoesPorUsuario.entrySet().stream()
+                .sorted(Map.Entry.<Long, Integer>comparingByValue().reversed())
+                .limit(5)
+                .collect(Collectors.toList());
+        
+        Map<Long, Integer> top5Usuarios = new LinkedHashMap<>();
+        topUsuarios.forEach(entry -> top5Usuarios.put(entry.getKey(), entry.getValue()));
+        estatisticas.put("top5UsuariosAprovadores", top5Usuarios);
+        
+        log.info("Estatísticas geradas: {} aprovações totais, {} usuários ativos", 
+                estatisticas.get("totalAprovacoes"), estatisticas.get("totalUsuariosAtivos"));
+        
+        return estatisticas;
+    }
+    
+    /**
+     * Obter histórico de aprovações de um usuário específico
+     * 
+     * @param usuarioId ID do usuário
+     * @return Lista de aprovações do usuário
+     */
+    public List<Map<String, Object>> obterHistoricoAprovacaoUsuario(Long usuarioId) {
+        log.info("Obtendo histórico de aprovações do usuário ID {}", usuarioId);
+        
+        List<Area> todasAreas = areaRepository.findAll();
+        List<Map<String, Object>> historico = new ArrayList<>();
+        
+        for (Area area : todasAreas) {
+            for (Talhao talhao : area.getTalhoes()) {
+                if (Objects.equals(talhao.getUsuarioAprovacaoId(), usuarioId)) {
+                    Map<String, Object> aprovacao = new HashMap<>();
+                    aprovacao.put("areaId", area.getId());
+                    aprovacao.put("areaNome", area.getNome());
+                    aprovacao.put("talhaoId", talhao.getId());
+                    aprovacao.put("talhaoMnTl", talhao.getMnTl());
+                    aprovacao.put("status", talhao.getStatus().name());
+                    aprovacao.put("dataAprovacao", talhao.getDataAprovacao());
+                    
+                    historico.add(aprovacao);
+                }
+            }
+        }
+        
+        // Ordenar por data de aprovação (mais recente primeiro)
+        historico.sort((a, b) -> {
+            java.time.LocalDateTime dataA = (java.time.LocalDateTime) a.get("dataAprovacao");
+            java.time.LocalDateTime dataB = (java.time.LocalDateTime) b.get("dataAprovacao");
+            if (dataA == null && dataB == null) return 0;
+            if (dataA == null) return 1;
+            if (dataB == null) return -1;
+            return dataB.compareTo(dataA);
+        });
+        
+        log.info("Histórico do usuário ID {} contém {} aprovações", usuarioId, historico.size());
+        return historico;
+    }
+    
+    /**
+     * Obter relatório de produtividade dos aprovadores
+     * 
+     * @return Map com métricas de produtividade
+     */
+    public Map<String, Object> obterRelatorioProdutiviadeAprovadores() {
+        log.info("Gerando relatório de produtividade dos aprovadores");
+        
+        List<Area> todasAreas = areaRepository.findAll();
+        Map<Long, Map<String, Object>> produtividadePorUsuario = new HashMap<>();
+        
+        for (Area area : todasAreas) {
+            for (Talhao talhao : area.getTalhoes()) {
+                if (talhao.getUsuarioAprovacaoId() != null && talhao.getDataAprovacao() != null) {
+                    Long usuarioId = talhao.getUsuarioAprovacaoId();
+                    
+                    produtividadePorUsuario.computeIfAbsent(usuarioId, k -> {
+                        Map<String, Object> metricas = new HashMap<>();
+                        metricas.put("totalAprovacoes", 0);
+                        metricas.put("primeiraAprovacao", talhao.getDataAprovacao());
+                        metricas.put("ultimaAprovacao", talhao.getDataAprovacao());
+                        metricas.put("statusDistribuicao", new HashMap<String, Integer>());
+                        return metricas;
+                    });
+                    
+                    Map<String, Object> metricas = produtividadePorUsuario.get(usuarioId);
+                    
+                    // Atualizar contadores
+                    metricas.put("totalAprovacoes", (Integer) metricas.get("totalAprovacoes") + 1);
+                    
+                    // Atualizar datas
+                    java.time.LocalDateTime primeira = (java.time.LocalDateTime) metricas.get("primeiraAprovacao");
+                    java.time.LocalDateTime ultima = (java.time.LocalDateTime) metricas.get("ultimaAprovacao");
+                    
+                    if (talhao.getDataAprovacao().isBefore(primeira)) {
+                        metricas.put("primeiraAprovacao", talhao.getDataAprovacao());
+                    }
+                    if (talhao.getDataAprovacao().isAfter(ultima)) {
+                        metricas.put("ultimaAprovacao", talhao.getDataAprovacao());
+                    }
+                    
+                    // Distribuição de status
+                    @SuppressWarnings("unchecked")
+                    Map<String, Integer> statusDist = (Map<String, Integer>) metricas.get("statusDistribuicao");
+                    statusDist.merge(talhao.getStatus().name(), 1, Integer::sum);
+                }
+            }
+        }
+        
+        // Calcular período ativo e média de aprovações para cada usuário
+        produtividadePorUsuario.forEach((usuarioId, metricas) -> {
+            java.time.LocalDateTime primeira = (java.time.LocalDateTime) metricas.get("primeiraAprovacao");
+            java.time.LocalDateTime ultima = (java.time.LocalDateTime) metricas.get("ultimaAprovacao");
+            
+            long diasAtivos = java.time.Duration.between(primeira, ultima).toDays() + 1;
+            double mediaAprovacoesPorDia = (Integer) metricas.get("totalAprovacoes") / (double) diasAtivos;
+            
+            metricas.put("diasAtivos", diasAtivos);
+            metricas.put("mediaAprovacoesPorDia", Math.round(mediaAprovacoesPorDia * 100.0) / 100.0);
+        });
+        
+        Map<String, Object> relatorio = new HashMap<>();
+        relatorio.put("usuariosMetricas", produtividadePorUsuario);
+        relatorio.put("totalUsuarios", produtividadePorUsuario.size());
+        relatorio.put("dataGeracao", java.time.LocalDateTime.now());
+        
+        log.info("Relatório de produtividade gerado para {} usuários", produtividadePorUsuario.size());
+        return relatorio;
+    }
+
 }
