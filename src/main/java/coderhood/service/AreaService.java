@@ -14,7 +14,6 @@ import coderhood.repository.AreaRepository;
 import coderhood.utils.GeoJsonParser;
 import coderhood.utils.GeometryMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
