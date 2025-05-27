@@ -752,7 +752,7 @@ public class AreaService {
         return relatorio;
     }
 
-    private @Nullable Integer detectAndGetDaninhasID(Map<String, Object> properties) {
+    private Integer detectAndGetDaninhasID(Map<String, Object> properties) {
         if (properties == null) {
             log.warn("Propriedades nulas ao detectar ID da daninha");
             return null;
